@@ -1,0 +1,5 @@
+commerce_paymos.connect:
+  title: 'Paymos'
+  route_name: commerce_paymos.connect
+  parent: commerce_payment.configuration
+  weight: 20
