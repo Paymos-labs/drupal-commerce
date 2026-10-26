@@ -1,0 +1,9 @@
+<?php
+
+/** @file Paymos native Drupal scheduler integration. */
+
+\Drupal\commerce_paymos\SdkBootstrap::register();
+
+function commerce_paymos_cron(): void {
+  \Drupal::service('commerce_paymos.reconciler')->run();
+}

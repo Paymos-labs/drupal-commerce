@@ -1,0 +1,7 @@
+name: Paymos
+type: module
+description: 'Paymos payment gateway for Drupal Commerce.'
+package: Commerce
+core_version_requirement: ^10.3 || ^11
+dependencies:
+  - commerce:commerce_payment

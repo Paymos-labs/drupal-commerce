@@ -1,0 +1,14 @@
+commerce_paymos.connect:
+  path: '/admin/commerce/config/payment/paymos'
+  defaults:
+    _form: '\Drupal\commerce_paymos\Form\ConnectForm'
+    _title: 'Paymos'
+  requirements:
+    _permission: 'administer commerce_payment_gateway'
+commerce_paymos.webhook:
+  path: '/paymos/webhook'
+  defaults:
+    _controller: '\Drupal\commerce_paymos\Controller\WebhookController::notify'
+  methods: [POST]
+  requirements:
+    _access: 'TRUE'

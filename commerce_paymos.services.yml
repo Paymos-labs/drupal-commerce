@@ -1,0 +1,37 @@
+services:
+  commerce_paymos.connection:
+    class: Drupal\commerce_paymos\Service\ConnectionStore
+    arguments: ['@state', '@private_key', '@request_stack', '@datetime.time']
+  commerce_paymos.client_factory:
+    class: Drupal\commerce_paymos\Service\ClientFactory
+    arguments: ['@commerce_paymos.connection']
+  commerce_paymos.store:
+    class: Drupal\commerce_paymos\Service\InvoiceStore
+    arguments: ['@database', '@entity_type.manager', '@lock', '@datetime.time', '@commerce_payment.order_updater']
+  commerce_paymos.events:
+    class: Drupal\commerce_paymos\Service\EventStore
+    arguments: ['@commerce_paymos.store', '@lock']
+  commerce_paymos.checkout:
+    class: Drupal\commerce_paymos\Service\CheckoutService
+    arguments: ['@commerce_paymos.store', '@commerce_paymos.client_factory']
+  commerce_paymos.processor:
+    class: Drupal\commerce_paymos\Service\PaymentProcessor
+    arguments: ['@commerce_paymos.store', '@commerce_paymos.client_factory', '@commerce_paymos.events']
+  logger.channel.commerce_paymos:
+    parent: logger.channel_base
+    arguments: ['commerce_paymos']
+  commerce_paymos.reconciler:
+    class: Drupal\commerce_paymos\Service\Reconciler
+    arguments: ['@commerce_paymos.store', '@commerce_paymos.processor', '@logger.channel.commerce_paymos']
+  commerce_paymos.device_client:
+    class: Paymos\Connect\DeviceConnectClient
+    factory: ['Drupal\commerce_paymos\SdkBootstrap', 'deviceClient']
+  commerce_paymos.uninstall_validator:
+    class: Drupal\commerce_paymos\Service\UninstallValidator
+    arguments: ['@database']
+    tags:
+      - { name: module_install.uninstall_validator }
+  commerce_paymos.gateway_availability:
+    class: Drupal\commerce_paymos\EventSubscriber\GatewayAvailabilitySubscriber
+    tags:
+      - { name: event_subscriber }

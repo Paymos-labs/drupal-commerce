@@ -1,0 +1,33 @@
+<?php
+
+/** @file Native module schema and lifecycle. */
+function commerce_paymos_schema(): array {
+  return [
+    'commerce_paymos_invoice' => [
+      'description' => 'Durable Paymos order intents and verified invoice bindings.',
+      'fields' => [
+        'order_id' => ['type'=>'varchar','length'=>64,'not null'=>TRUE],
+        'invoice_id' => ['type'=>'varchar','length'=>128,'not null'=>FALSE],
+        'data' => ['type'=>'blob','size'=>'big','not null'=>TRUE],
+        'credited' => ['type'=>'int','size'=>'tiny','not null'=>TRUE,'default'=>0],
+        'updated' => ['type'=>'int','not null'=>TRUE],
+        'checked' => ['type'=>'int','not null'=>TRUE,'default'=>0],
+      ],
+      'primary key' => ['order_id'],
+      'unique keys' => ['invoice' => ['invoice_id']],
+      'indexes' => ['pending' => ['credited','checked']],
+    ],
+    'commerce_paymos_event' => [
+      'description' => 'Events committed atomically with native payment effects.',
+      'fields' => [
+        'event_id' => ['type'=>'varchar','length'=>128,'not null'=>TRUE],
+        'committed' => ['type'=>'int','not null'=>TRUE],
+      ],
+      'primary key' => ['event_id'],
+    ],
+  ];
+}
+function commerce_paymos_uninstall(): void {
+  \Drupal::state()->delete('commerce_paymos.connection');
+  \Drupal::state()->delete('commerce_paymos.device');
+}

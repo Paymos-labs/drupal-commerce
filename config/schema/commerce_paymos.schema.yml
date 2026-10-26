@@ -1,0 +1,3 @@
+commerce_payment.commerce_payment_gateway.plugin.paymos:
+  type: commerce_payment_gateway_configuration
+  label: 'Paymos configuration'
