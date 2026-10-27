@@ -20,6 +20,8 @@ composer require 'drupal/commerce_paymos:^1.0@alpha'
 
 You can also install the manual ZIP package. Extract its `commerce_paymos` directory into your site's contributed modules directory. The manual package includes the PHP SDK, so keep the bundled files together. Enable the Paymos module in Drupal after installing it.
 
+After updating the module, rebuild Drupal’s cache: `drush --uri=https://your-store.example cache:rebuild`.
+
 ## Connect your store
 
 Open `/admin/commerce/config/payment/paymos` in Drupal. In the Paymos dashboard, select the project you want to use for this store. Choose **Connect Paymos** in Drupal, approve the connection, and return to Drupal to choose **Check approval**.
