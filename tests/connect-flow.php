@@ -56,6 +56,32 @@ function paymos_native_connect_flow(): void {
   if (!is_string($deviceCiphertext) || str_contains($deviceCiphertext, 'device_native_fixture')) {
     throw new RuntimeException('Native temporary device state is not encrypted');
   }
+  $pending = $form->buildForm([], new FormState());
+  if (($pending['code']['#plain_text'] ?? NULL) !== 'NATV-CODE') {
+    throw new RuntimeException('Native pending form does not show the approval comparison code');
+  }
+  if (str_contains(json_encode($pending, JSON_THROW_ON_ERROR), 'device_native_fixture')) {
+    throw new RuntimeException('Native pending form exposed the secret device code');
+  }
+  $switcher = $container->get('account_switcher');
+  $switcher->switchTo(new \Drupal\Core\Session\UserSession(['uid' => 987654]));
+  try {
+    $other = $form->buildForm([], new FormState());
+    if (isset($other['code']) || isset($other['approval']) || isset($other['actions']['check'])) {
+      throw new RuntimeException('Another administrator can see the pending approval controls');
+    }
+  }
+  finally { $switcher->switchBack(); }
+  $hostile = $device;
+  $hostile['user_code'] = '<b>NATV&CODE</b>';
+  $connection->saveDevice($hostile);
+  $escaped = $form->buildForm([], new FormState());
+  $codeItem = $escaped['code'];
+  $html = (string) $container->get('renderer')->renderInIsolation($codeItem);
+  if (!str_contains($html, '&lt;b&gt;NATV&amp;CODE&lt;/b&gt;') || str_contains($html, '<b>NATV')) {
+    throw new RuntimeException('Native comparison code is not escaped');
+  }
+  $connection->saveDevice($device);
   $form->checkConnection($render, $formState);
   if (count($transport->requests()) !== 1) { throw new RuntimeException('Early poll was not rate limited locally'); }
   $clock->now += 6;
@@ -91,5 +117,5 @@ function paymos_native_connect_flow(): void {
   }
   $connection->disconnect();
   if ($connection->credentials() !== []) { throw new RuntimeException('Disconnect did not clear credentials'); }
-  print "PASS native Connect callbacks + SDK: start, local poll interval, pending, approval, encrypted two environments, project binding, token disposal, expiry, disconnect\n";
+  print "PASS native Connect callbacks + SDK: start, owner-only escaped comparison code, secret exclusion, local poll interval, pending, approval, encrypted two environments, project binding, token disposal, expiry, disconnect\n";
 }

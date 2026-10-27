@@ -26,6 +26,9 @@ final class ConnectForm extends FormBase {
     $form['actions'] = ['#type'=>'actions'];
     $form['actions']['connect'] = ['#type'=>'submit', '#value'=>$this->t('Connect Paymos')];
     if ($device && ($device['owner_uid'] ?? '') === (string)$this->currentUser()->id()) {
+      if (!empty($device['user_code'])) {
+        $form['code'] = ['#type'=>'item', '#plain_text'=>(string)$device['user_code']];
+      }
       $form['approval'] = ['#type'=>'link', '#title'=>$this->t('Connect Paymos'),
         '#url'=>Url::fromUri($device['verification_url']), '#attributes'=>['target'=>'_blank','rel'=>'noopener noreferrer']];
       $form['pending'] = ['#type'=>'item','#markup'=>$this->t('Approve the connection in Paymos, then check approval here.')];
