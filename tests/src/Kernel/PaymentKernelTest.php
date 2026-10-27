@@ -58,6 +58,12 @@ final class PaymentKernelTest extends OrderKernelTestBase {
       'credited' => FALSE, 'late_noted' => FALSE];
   }
 
+  public function testNativeBuyerReturnBridge(): void {
+    require_once dirname(__DIR__, 2) . '/return-flow.php';
+    paymos_native_return_flow($this->order, FALSE);
+    $this->assertSame([], $this->payments(), 'Return navigation creates no completed payment');
+  }
+
   private function invoice(string $status = 'paid'): array {
     return ['invoice_id' => 'inv_fixture', 'project_id' => 'prj_fixture', 'is_test' => TRUE,
       'status' => $status, 'order' => ['external_id' => 'intent_fixture', 'amount' => '100', 'currency' => 'USD']];

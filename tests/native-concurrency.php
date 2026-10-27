@@ -67,6 +67,8 @@ if ($action === 'setup') {
     'payment_url' => 'https://checkout.paymos.io/inv_native_' . $phase,
     'status' => 'awaiting_payment', 'credited' => FALSE, 'late_noted' => FALSE];
   $store->save($record);
+  require_once __DIR__ . '/return-flow.php';
+  paymos_native_return_flow($order);
   \Drupal::state()->set($stateKey, $record);
   print "PASS native fixture created: $phase\n";
   return;

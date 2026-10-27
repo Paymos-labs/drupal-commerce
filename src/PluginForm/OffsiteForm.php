@@ -18,8 +18,11 @@ final class OffsiteForm extends PaymentOffsiteForm {
     try {
       $url = \Drupal::service('commerce_paymos.checkout')->start((string)$payment->getOrderId(),
         (string)$gateway->id(),$plugin->getEnvironment());
+      \Drupal::service('commerce_paymos.return_bridge')->remember($payment->getOrder(),
+        (string)$form['#return_url'], (string)$form['#cancel_url']);
     }
     catch (\Throwable $e) { throw new PaymentGatewayException((string)$this->t('Could not connect to Paymos. Try again.')); }
+    $form['#cache']['max-age'] = 0;
     return $this->buildRedirectForm($form,$form_state,$url,[],self::REDIRECT_GET);
   }
 }

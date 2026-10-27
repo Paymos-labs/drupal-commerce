@@ -5,6 +5,15 @@ commerce_paymos.connect:
     _title: 'Paymos'
   requirements:
     _permission: 'administer commerce_payment_gateway'
+commerce_paymos.return:
+  path: '/paymos/return'
+  defaults:
+    _controller: '\Drupal\commerce_paymos\Controller\ReturnController::handle'
+  methods: [GET]
+  requirements:
+    _access: 'TRUE'
+  options:
+    no_cache: TRUE
 commerce_paymos.webhook:
   path: '/paymos/webhook'
   defaults:

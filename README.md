@@ -26,6 +26,8 @@ Open `/admin/commerce/config/payment/paymos` in Drupal. In the Paymos dashboard,
 
 Then open `/admin/commerce/config/payment-gateways/add`. Create a payment gateway, select Paymos, and choose Sandbox or Live for the environment you intend to use. The connection and the Commerce payment gateway are separate steps; finish both before using the gateway at checkout.
 
+Copy the return addresses shown in Drupal admin into your existing Paymos project: `/paymos/return` for Success URL and `/paymos/return?cancel=1` for Fail URL. Do this once. The hosted checkout uses its Back to store link. Drupal keeps the latest checkout’s native return destinations in the buyer’s browser session for one hour. Another browser, expired session data or a changed order/gateway binding sends the buyer to the store home page. A browser return never confirms payment; verified webhook/API checks and the native Commerce payment determine payment status. Invoice API fields remain unchanged.
+
 Credentials stay in encrypted Drupal state. Encryption uses the Drupal private key and `hash_salt`, and secrets do not appear in configuration exports. If your store's canonical URL changes, reconnect the store to Paymos.
 
 ## Keep payment checks running

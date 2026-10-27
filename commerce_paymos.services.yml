@@ -1,4 +1,7 @@
 services:
+  commerce_paymos.return_bridge:
+    class: Drupal\commerce_paymos\Service\ReturnBridge
+    arguments: ['@request_stack', '@datetime.time', '@entity_type.manager']
   commerce_paymos.connection:
     class: Drupal\commerce_paymos\Service\ConnectionStore
     arguments: ['@state', '@private_key', '@request_stack', '@datetime.time']
