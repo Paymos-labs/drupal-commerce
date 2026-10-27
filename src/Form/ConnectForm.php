@@ -23,6 +23,11 @@ final class ConnectForm extends FormBase {
     try { $connected = $this->connection->credentials() !== []; $device = $this->connection->device(); }
     catch (\Throwable $e) { $connected = FALSE; $device = NULL; }
     $form['status'] = ['#type'=>'item', '#markup'=>$connected ? $this->t('Paymos connection saved.') : $this->t('Connect Paymos before accepting payments.')];
+    $form['success_return'] = ['#type'=>'item', '#title'=>$this->t('Success return URL'),
+      '#plain_text'=>Url::fromRoute('commerce_paymos.return', [], ['absolute'=>TRUE])->toString()];
+    $form['failure_return'] = ['#type'=>'item', '#title'=>$this->t('Failure return URL'),
+      '#plain_text'=>Url::fromRoute('commerce_paymos.return', [], ['absolute'=>TRUE, 'query'=>['cancel'=>1]])->toString(),
+      '#description'=>$this->t('Copy these addresses once into Success URL and Fail URL in your existing Paymos project. They let the checkout’s Back to store link return the buyer to Drupal Commerce.')];
     $form['actions'] = ['#type'=>'actions'];
     $form['actions']['connect'] = ['#type'=>'submit', '#value'=>$this->t('Connect Paymos')];
     if ($device && ($device['owner_uid'] ?? '') === (string)$this->currentUser()->id()) {
