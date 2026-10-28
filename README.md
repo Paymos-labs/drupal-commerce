@@ -1,8 +1,6 @@
 # Paymos for Drupal Commerce
 
-Take Paymos payments through your Drupal Commerce checkout. The `commerce_paymos` module adds a native offsite payment gateway: your customer leaves the store to pay, while Drupal Commerce keeps the order and payment records.
-
-This is an alpha integration. Connecting requires a matching Paymos backend with Drupal Commerce registered in its CMS catalog. GitHub package version `v1.0.0` identifies the package; it does not establish production readiness.
+Accept payments through Paymos in Drupal Commerce. Version `1.0.0` is the first stable release, available through [Drupal.org](https://www.drupal.org/project/commerce_paymos) and the [official GitHub repository](https://github.com/Paymos-labs/drupal-commerce).
 
 ## Requirements
 
@@ -12,10 +10,10 @@ The module uses the GPL-2.0-or-later license. Its PHP SDK dependency uses the MI
 
 ## Install the module
 
-Composer is the primary installation method. Once the alpha release is available on the [Drupal.org project](https://www.drupal.org/project/commerce_paymos), add the package from your Drupal project directory:
+Use Composer to install the stable release and resolve its SDK dependency:
 
 ```sh
-composer require 'drupal/commerce_paymos:^1.0@alpha'
+composer require 'drupal/commerce_paymos:^1.0'
 ```
 
 You can also install the manual ZIP package. Extract its `commerce_paymos` directory into your site's contributed modules directory. The manual package includes the PHP SDK, so keep the bundled files together. Enable the Paymos module in Drupal after installing it.

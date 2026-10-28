@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [1.0.6] - 2026-10-28
+
+- fix(drupal): publish stable module instructions
+- docs(drupal): prepare stable Composer installation and publication
+
+- Released Drupal Commerce 1.0.0 as stable; install with `composer require drupal/commerce_paymos:^1.0`.
+
 ## [1.0.5] - 2026-10-27
 
 - chore: rebuild canonical CMS package
