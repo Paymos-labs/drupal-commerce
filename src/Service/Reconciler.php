@@ -6,8 +6,14 @@ namespace Drupal\commerce_paymos\Service;
 use Psr\Log\LoggerInterface;
 
 final class Reconciler {
-  public function __construct(private PaymentStoreInterface $store, private PaymentProcessor $processor,
-    private LoggerInterface $logger) {}
+  private $store;
+  private $processor;
+  private $logger;
+  private $refunds;
+  public function __construct(PaymentStoreInterface $store, PaymentProcessor $processor,
+    LoggerInterface $logger, ?RefundAdapter $refunds = NULL) {
+    $this->store = $store; $this->processor = $processor; $this->logger = $logger; $this->refunds = $refunds;
+  }
   public function run(int $limit=10): int {
     $checked = 0;
     foreach ($this->store->pending(0,min(50,max(1,$limit))) as $record) {
@@ -23,6 +29,7 @@ final class Reconciler {
         $this->logger->warning('Paymos reconciliation failed for an unresolved invoice.');
       }
     }
+    if ($this->refunds !== NULL) { $checked += $this->refunds->run(); }
     return $checked;
   }
 }

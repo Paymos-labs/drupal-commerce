@@ -19,13 +19,22 @@ services:
     arguments: ['@commerce_paymos.store', '@commerce_paymos.client_factory']
   commerce_paymos.processor:
     class: Drupal\commerce_paymos\Service\PaymentProcessor
-    arguments: ['@commerce_paymos.store', '@commerce_paymos.client_factory', '@commerce_paymos.events']
+    arguments: ['@commerce_paymos.store', '@commerce_paymos.client_factory', '@commerce_paymos.events', '@commerce_paymos.refunds']
+  commerce_paymos.refund_store:
+    class: Drupal\commerce_paymos\Service\RefundIntentStore
+    arguments: ['@database', '@datetime.time']
+  commerce_paymos.refund_native:
+    class: Drupal\commerce_paymos\Service\RefundNativeGateway
+    arguments: ['@entity_type.manager', '@commerce_paymos.store', '@database', '@commerce_paymos.refund_store']
+  commerce_paymos.refunds:
+    class: Drupal\commerce_paymos\Service\RefundAdapter
+    arguments: ['@commerce_paymos.refund_store', '@commerce_paymos.refund_native', '@commerce_paymos.client_factory', '@config.factory']
   logger.channel.commerce_paymos:
     parent: logger.channel_base
     arguments: ['commerce_paymos']
   commerce_paymos.reconciler:
     class: Drupal\commerce_paymos\Service\Reconciler
-    arguments: ['@commerce_paymos.store', '@commerce_paymos.processor', '@logger.channel.commerce_paymos']
+    arguments: ['@commerce_paymos.store', '@commerce_paymos.processor', '@logger.channel.commerce_paymos', '@commerce_paymos.refunds']
   commerce_paymos.device_client:
     class: Paymos\Connect\DeviceConnectClient
     factory: ['Drupal\commerce_paymos\SdkBootstrap', 'deviceClient']

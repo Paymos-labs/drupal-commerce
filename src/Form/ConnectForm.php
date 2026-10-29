@@ -11,9 +11,15 @@ use Paymos\Connect\DeviceConnectClient;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 final class ConnectForm extends FormBase {
-  public function __construct(protected ConnectionStore $connection, protected DeviceConnectClient $client,
-    protected TimeInterface $time, protected Reconciler $reconciler) {}
-  public static function create(ContainerInterface $container): static {
+  protected $connection;
+  protected $client;
+  protected $time;
+  protected $reconciler;
+  public function __construct(ConnectionStore $connection, DeviceConnectClient $client,
+    TimeInterface $time, Reconciler $reconciler) {
+    $this->connection = $connection; $this->client = $client; $this->time = $time; $this->reconciler = $reconciler;
+  }
+  public static function create(ContainerInterface $container) {
     return new static($container->get('commerce_paymos.connection'),$container->get('commerce_paymos.device_client'),
       $container->get('datetime.time'),$container->get('commerce_paymos.reconciler'));
   }
@@ -42,6 +48,9 @@ final class ConnectForm extends FormBase {
     if ($connected) {
       $form['actions']['disconnect'] = ['#type'=>'submit','#value'=>$this->t('Disconnect Paymos'),'#submit'=>['::disconnect']];
       $form['actions']['reconcile'] = ['#type'=>'submit','#value'=>$this->t('Check pending payments'),'#submit'=>['::reconcile']];
+      if ($this->currentUser()->hasPermission('administer commerce_payment')) {
+        $this->refundPanel($form,$form_state);
+      }
     }
     return $form;
   }
@@ -81,11 +90,57 @@ final class ConnectForm extends FormBase {
     $form_state->setRebuild();
   }
   public function disconnect(array &$form, FormStateInterface $form_state): void {
+    if (\Drupal::service('commerce_paymos.refund_store')->hasHistory()) {
+      $this->messenger()->addError($this->t('TODO-COPY:refund-history-prevents-disconnect')); $form_state->setRebuild(); return;
+    }
     $this->connection->disconnect();
     $this->messenger()->addStatus($this->t('Paymos connection removed.')); $form_state->setRebuild();
   }
   public function reconcile(array &$form, FormStateInterface $form_state): void {
     $count = $this->reconciler->run();
     $this->messenger()->addStatus($this->t('Checked @count pending payments.',['@count'=>$count])); $form_state->setRebuild();
+  }
+  private function refundPanel(array &$form, FormStateInterface $form_state): void {
+    $options = [];
+    foreach (\Drupal::service('commerce_paymos.refunds')->candidates() as $payment) {
+      $options[(string)$payment->id()] = $this->t('TODO-COPY:refund-payment-option @id',['@id'=>$payment->id()]);
+    }
+    if (!$form_state->get('paymos_refund_token')) { $form_state->set('paymos_refund_token',\Drupal::service('uuid')->generate()); }
+    $form['refunds'] = ['#type'=>'details','#title'=>$this->t('TODO-COPY:refund-panel'),'#open'=>TRUE];
+    $form['refunds']['refund_payment'] = ['#type'=>'select','#title'=>$this->t('TODO-COPY:refund-payment'),
+      '#options'=>$options,'#empty_option'=>$this->t('TODO-COPY:refund-select-payment')];
+    $labels = ['full'=>$this->t('TODO-COPY:refund-full'),'overpayment'=>$this->t('TODO-COPY:refund-overpayment')];
+    foreach (['full'=>'refundFull','overpayment'=>'refundOverpayment'] as $mode => $callback) {
+      $form['refunds'][$mode] = ['#type'=>'submit','#value'=>$labels[$mode],
+        '#submit'=>['::' . $callback],'#disabled'=>!$options];
+    }
+    foreach (\Drupal::service('commerce_paymos.refund_store')->recent() as $intent) {
+      $observation = $intent->observation();
+      $form['refunds']['operation_' . $intent->operationId()] = ['#type'=>'item',
+        '#attributes'=>['id'=>'paymos-refund-' . $intent->operationId()],
+        '#title'=>$this->t('TODO-COPY:refund-operation'),
+        '#plain_text'=>$intent->operationId() . ' / ' . $intent->mode() . ' / ' . $intent->cashState() . ' / ' . $intent->projectionState()
+          . ($observation ? ' / ' . $observation->principalDecimal() . ' ' . $observation->currency() . '/' . $observation->network() : '')];
+    }
+    foreach (\Drupal::service('commerce_paymos.refund_store')->externalRecent() as $marker) {
+      $observation = $marker['observation'];
+      $form['refunds']['external_' . sha1($observation['withdrawal_id'])] = ['#type'=>'item',
+        '#title'=>$this->t('TODO-COPY:refund-external-observation'),
+        '#plain_text'=>$observation['withdrawal_id'] . ' / ' . $observation['mode'] . ' / ' . $observation['status']
+          . ' / ' . $marker['projection_state'] . ' / ' . $observation['amount'] . ' ' . $observation['currency'] . '/' . $observation['network']
+          . ($marker['review_reason'] ? ' / ' . $marker['review_reason'] : '')];
+    }
+  }
+  public function refundFull(array &$form, FormStateInterface $form_state): void { $this->refundAction($form_state,'full'); }
+  public function refundOverpayment(array &$form, FormStateInterface $form_state): void { $this->refundAction($form_state,'overpayment'); }
+  private function refundAction(FormStateInterface $form_state, string $mode): void {
+    try {
+      $payment = \Drupal::service('entity_type.manager')->getStorage('commerce_payment')->load($form_state->getValue('refund_payment'));
+      if (!$payment || !$payment->getPaymentGateway() || $payment->getPaymentGateway()->getPluginId() !== 'paymos') { throw new \RuntimeException('refund_payment_missing'); }
+      $payment->getPaymentGateway()->getPlugin()->requestRefund($payment,$mode,$form_state->get('paymos_refund_token'),$this->currentUser());
+      $this->messenger()->addStatus($this->t('TODO-COPY:refund-operation-status'));
+    }
+    catch (\Throwable $e) { $this->messenger()->addError($this->t('TODO-COPY:refund-action-review')); }
+    $form_state->setRebuild();
   }
 }

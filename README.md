@@ -6,7 +6,7 @@ Accept payments through Paymos in Drupal Commerce. Version `1.0.0` is the first 
 
 Use Drupal `^10.3 || ^11` with Drupal Commerce `^3`. The module declares PHP `^8.1`; your Drupal version may require a newer PHP version, so follow the stricter requirement. Your store needs a public HTTPS address for the connection and payment notifications.
 
-The module uses the GPL-2.0-or-later license. Its PHP SDK dependency uses the MIT license and accepts compatible 1.x versions from 1.6.1 (`^1.6.1`).
+The module uses the GPL-2.0-or-later license. Its PHP SDK dependency uses the MIT license and accepts compatible 1.x versions from 1.6.2 (`^1.6.2`).
 
 ## Install the module
 

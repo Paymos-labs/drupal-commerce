@@ -9,8 +9,14 @@ use Paymos\Webhook\{MultiEnvironmentWebhookVerifier, WebhookEvent};
 
 /** No native payment mutation outside the order transaction and SDK guards. */
 final class PaymentProcessor {
-  public function __construct(private PaymentStoreInterface $store, private ClientFactoryInterface $clients,
-    private EventReservationInterface $events) {}
+  private $store;
+  private $clients;
+  private $events;
+  private $refunds;
+  public function __construct(PaymentStoreInterface $store, ClientFactoryInterface $clients,
+    EventReservationInterface $events, ?RefundAdapter $refunds = NULL) {
+    $this->store = $store; $this->clients = $clients; $this->events = $events; $this->refunds = $refunds;
+  }
 
   public function handle(string $body, string $signature, ?int $now = NULL): int {
     try {
@@ -20,6 +26,11 @@ final class PaymentProcessor {
       }
       $match = (new MultiEnvironmentWebhookVerifier($secrets, $this->events))->process($signature, $body, $now);
       $event = $match->event();
+      if (strpos($event->type(),'withdrawal.') === 0 && $this->refunds !== NULL) {
+        $data = $event->toArray()['data'];
+        if (!empty($data['invoice_id'])) { $this->refunds->callback($data,$match->environment()); }
+        return 200;
+      }
       if (!$event->isInvoiceEvent()) { return 200; }
       $record = $this->store->byInvoice($event->invoiceId());
       if ($record === NULL) { return 409; } // A callback may beat the create response.

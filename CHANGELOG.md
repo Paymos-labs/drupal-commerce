@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-29
+
+- fix(ton): return friendly addresses with existing webhook schema
+- fix(drupal): refuse direct refund state writes on Paymos payments
+- feat(drupal): native refund adapter for full and overpayment refunds
+- chore: bundle Paymos PHP SDK v1.7.0
+- chore: rebuild canonical CMS package
+
+- Released Drupal Commerce 1.0.0 as stable; install with `composer require drupal/commerce_paymos:^1.0`.
+
 ## [1.0.6] - 2026-10-28
 
 - fix(drupal): publish stable module instructions

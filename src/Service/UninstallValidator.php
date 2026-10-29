@@ -12,9 +12,18 @@ use Drupal\Core\StringTranslation\StringTranslationTrait;
 final class UninstallValidator implements ModuleUninstallValidatorInterface {
   use StringTranslationTrait;
 
-  public function __construct(private Connection $database) {}
+  private $database;
+  public function __construct(Connection $database) { $this->database = $database; }
 
   public function validate($module): array {
+    if ($module === 'commerce_paymos') {
+      foreach (['commerce_paymos_refund','commerce_paymos_refund_projection'] as $table) {
+        if ($this->database->schema()->tableExists($table)
+          && $this->database->select($table,'r')->countQuery()->execute()->fetchField()) {
+          return [(string)$this->t('TODO-COPY:refund-history-prevents-uninstall')];
+        }
+      }
+    }
     if ($module !== 'commerce_paymos' || !$this->database->schema()->tableExists('commerce_paymos_invoice')) {
       return [];
     }
