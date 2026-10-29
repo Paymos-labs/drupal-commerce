@@ -3,8 +3,8 @@
 declare(strict_types=1);
 namespace Drupal\commerce_paymos\Service;
 interface PaymentStoreInterface {
-  public function synchronized(string $orderId, callable $action): mixed;
-  public function transaction(string $orderId, callable $action, bool $durable = FALSE): mixed;
+  public function synchronized(string $orderId, callable $action);
+  public function transaction(string $orderId, callable $action, bool $durable = FALSE);
   public function snapshot(string $orderId): array;
   public function load(string $orderId): ?array;
   public function byInvoice(string $invoiceId): ?array;

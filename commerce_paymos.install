@@ -2,7 +2,7 @@
 
 /** @file Native module schema and lifecycle. */
 function commerce_paymos_schema(): array {
-  return [
+  return commerce_paymos_refund_schema() + [
     'commerce_paymos_invoice' => [
       'description' => 'Durable Paymos order intents and verified invoice bindings.',
       'fields' => [
@@ -26,6 +26,55 @@ function commerce_paymos_schema(): array {
       'primary key' => ['event_id'],
     ],
   ];
+}
+
+/** Refund history is independent of the current payment projection. */
+function commerce_paymos_refund_schema(): array {
+  return [
+    'commerce_paymos_refund' => [
+      'fields' => [
+        'operation_id' => ['type'=>'varchar','length'=>64,'not null'=>TRUE],
+        'installation_id' => ['type'=>'varchar','length'=>64,'not null'=>TRUE],
+        'request_token' => ['type'=>'varchar','length'=>64,'not null'=>TRUE],
+        'payment_key' => ['type'=>'varchar','length'=>128,'not null'=>TRUE],
+        'external_id' => ['type'=>'varchar','length'=>200,'not null'=>TRUE],
+        'withdrawal_id' => ['type'=>'varchar','length'=>128,'not null'=>FALSE],
+        'data' => ['type'=>'blob','size'=>'big','not null'=>TRUE],
+        'due' => ['type'=>'int','size'=>'big','not null'=>TRUE],
+        'created' => ['type'=>'int','size'=>'big','not null'=>TRUE],
+      ],
+      'primary key' => ['operation_id'],
+      'unique keys' => ['request'=>['installation_id','request_token'], 'external'=>['external_id'], 'withdrawal'=>['withdrawal_id']],
+      'indexes' => ['payment'=>['payment_key'], 'due'=>['due','operation_id']],
+    ],
+    'commerce_paymos_refund_projection' => [
+      'fields' => [
+        'operation_id' => ['type'=>'varchar','length'=>64,'not null'=>TRUE],
+        'payment_key' => ['type'=>'varchar','length'=>128,'not null'=>TRUE],
+        'external' => ['type'=>'int','size'=>'tiny','not null'=>TRUE,'default'=>0],
+        'checked' => ['type'=>'int','size'=>'big','not null'=>TRUE,'default'=>0],
+        'data' => ['type'=>'blob','size'=>'big','not null'=>TRUE],
+      ],
+      'primary key' => ['operation_id'],
+      'indexes' => ['payment'=>['payment_key'], 'sweep'=>['external','checked']],
+    ],
+    'commerce_paymos_refund_lock' => [
+      'fields' => [
+        'payment_key' => ['type'=>'varchar','length'=>128,'not null'=>TRUE],
+        'owner' => ['type'=>'varchar','length'=>64,'not null'=>TRUE],
+        'expires' => ['type'=>'int','size'=>'big','not null'=>TRUE],
+      ],
+      'primary key' => ['payment_key'],
+    ],
+  ];
+}
+
+/** Add mode-bound intents without rewriting existing payment bindings. */
+function commerce_paymos_update_10001(): void {
+  $schema = \Drupal::database()->schema();
+  foreach (commerce_paymos_refund_schema() as $table => $definition) {
+    if (!$schema->tableExists($table)) { $schema->createTable($table, $definition); }
+  }
 }
 function commerce_paymos_uninstall(): void {
   \Drupal::state()->delete('commerce_paymos.connection');

@@ -4,6 +4,10 @@
 
 \Drupal\commerce_paymos\SdkBootstrap::register();
 
+function commerce_paymos_commerce_payment_presave(\Drupal\commerce_payment\Entity\PaymentInterface $payment): void {
+  \Drupal\commerce_paymos\Service\RefundPaymentGuard::assertSave($payment);
+}
+
 function commerce_paymos_cron(): void {
   \Drupal::service('commerce_paymos.reconciler')->run();
 }
