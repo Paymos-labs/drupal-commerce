@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [1.1.3] - 2026-11-01
+
+- chore: bundle Paymos PHP SDK v1.8.1
+- chore: rebuild canonical CMS package
+
+- Released Drupal Commerce 1.0.0 as stable; install with `composer require drupal/commerce_paymos:^1.0`.
+
 ## [1.1.2] - 2026-10-30
 
 - fix(plugins): require helper-complete PHP SDK for refunds
