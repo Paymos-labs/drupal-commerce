@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [1.1.6] - 2026-11-03
+
+- fix(plugins): update php-sdk pin in PrestaShop/Drupal CI and fix clippy struct_field_names in Rust SDK
+
+- Released Drupal Commerce 1.0.0 as stable; install with `composer require drupal/commerce_paymos:^1.0`.
+
 ## [1.1.5] - 2026-11-03
 
 - chore: bundle Paymos PHP SDK v1.9.1
