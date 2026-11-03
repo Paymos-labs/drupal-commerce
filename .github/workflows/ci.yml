@@ -26,7 +26,7 @@ jobs:
           mkdir "$RUNNER_TEMP/sdk"
           cd "$RUNNER_TEMP/sdk"
           composer init --name=paymos/drupal-ci --no-interaction
-          composer require 'paymos/php-sdk:^1.6.1' --no-interaction
+          composer require 'paymos/php-sdk:^1.9.1' --no-interaction
       - name: Guard regressions and syntax
         run: |
           set -euo pipefail
