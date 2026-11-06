@@ -91,7 +91,7 @@ final class ConnectForm extends FormBase {
   }
   public function disconnect(array &$form, FormStateInterface $form_state): void {
     if (\Drupal::service('commerce_paymos.refund_store')->hasHistory()) {
-      $this->messenger()->addError($this->t('TODO-COPY:refund-history-prevents-disconnect')); $form_state->setRebuild(); return;
+      $this->messenger()->addError($this->t('Cannot disconnect Paymos while refund history exists for this store.')); $form_state->setRebuild(); return;
     }
     $this->connection->disconnect();
     $this->messenger()->addStatus($this->t('Paymos connection removed.')); $form_state->setRebuild();
@@ -103,13 +103,13 @@ final class ConnectForm extends FormBase {
   private function refundPanel(array &$form, FormStateInterface $form_state): void {
     $options = [];
     foreach (\Drupal::service('commerce_paymos.refunds')->candidates() as $payment) {
-      $options[(string)$payment->id()] = $this->t('TODO-COPY:refund-payment-option @id',['@id'=>$payment->id()]);
+      $options[(string)$payment->id()] = $this->t('Payment #@id',['@id'=>$payment->id()]);
     }
     if (!$form_state->get('paymos_refund_token')) { $form_state->set('paymos_refund_token',\Drupal::service('uuid')->generate()); }
-    $form['refunds'] = ['#type'=>'details','#title'=>$this->t('TODO-COPY:refund-panel'),'#open'=>TRUE];
-    $form['refunds']['refund_payment'] = ['#type'=>'select','#title'=>$this->t('TODO-COPY:refund-payment'),
-      '#options'=>$options,'#empty_option'=>$this->t('TODO-COPY:refund-select-payment')];
-    $labels = ['full'=>$this->t('TODO-COPY:refund-full'),'overpayment'=>$this->t('TODO-COPY:refund-overpayment')];
+    $form['refunds'] = ['#type'=>'details','#title'=>$this->t('Paymos refunds'),'#open'=>TRUE];
+    $form['refunds']['refund_payment'] = ['#type'=>'select','#title'=>$this->t('Payment'),
+      '#options'=>$options,'#empty_option'=>$this->t('- Select a payment -')];
+    $labels = ['full'=>$this->t('Full refund'),'overpayment'=>$this->t('Refund overpayment')];
     foreach (['full'=>'refundFull','overpayment'=>'refundOverpayment'] as $mode => $callback) {
       $form['refunds'][$mode] = ['#type'=>'submit','#value'=>$labels[$mode],
         '#submit'=>['::' . $callback],'#disabled'=>!$options];
@@ -118,14 +118,14 @@ final class ConnectForm extends FormBase {
       $observation = $intent->observation();
       $form['refunds']['operation_' . $intent->operationId()] = ['#type'=>'item',
         '#attributes'=>['id'=>'paymos-refund-' . $intent->operationId()],
-        '#title'=>$this->t('TODO-COPY:refund-operation'),
+        '#title'=>$this->t('Refund operation'),
         '#plain_text'=>$intent->operationId() . ' / ' . $intent->mode() . ' / ' . $intent->cashState() . ' / ' . $intent->projectionState()
           . ($observation ? ' / ' . $observation->principalDecimal() . ' ' . $observation->currency() . '/' . $observation->network() : '')];
     }
     foreach (\Drupal::service('commerce_paymos.refund_store')->externalRecent() as $marker) {
       $observation = $marker['observation'];
       $form['refunds']['external_' . sha1($observation['withdrawal_id'])] = ['#type'=>'item',
-        '#title'=>$this->t('TODO-COPY:refund-external-observation'),
+        '#title'=>$this->t('External refund observation'),
         '#plain_text'=>$observation['withdrawal_id'] . ' / ' . $observation['mode'] . ' / ' . $observation['status']
           . ' / ' . $marker['projection_state'] . ' / ' . $observation['amount'] . ' ' . $observation['currency'] . '/' . $observation['network']
           . ($marker['review_reason'] ? ' / ' . $marker['review_reason'] : '')];
@@ -138,9 +138,9 @@ final class ConnectForm extends FormBase {
       $payment = \Drupal::service('entity_type.manager')->getStorage('commerce_payment')->load($form_state->getValue('refund_payment'));
       if (!$payment || !$payment->getPaymentGateway() || $payment->getPaymentGateway()->getPluginId() !== 'paymos') { throw new \RuntimeException('refund_payment_missing'); }
       $payment->getPaymentGateway()->getPlugin()->requestRefund($payment,$mode,$form_state->get('paymos_refund_token'),$this->currentUser());
-      $this->messenger()->addStatus($this->t('TODO-COPY:refund-operation-status'));
+      $this->messenger()->addStatus($this->t('Paymos refund request recorded. Check the operation status below.'));
     }
-    catch (\Throwable $e) { $this->messenger()->addError($this->t('TODO-COPY:refund-action-review')); }
+    catch (\Throwable $e) { $this->messenger()->addError($this->t('Could not complete the Paymos refund request. Review the payment and operation status before retrying.')); }
     $form_state->setRebuild();
   }
 }

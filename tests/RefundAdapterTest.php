@@ -218,7 +218,7 @@ $refundTests['external_full_is_review_external_over_is_cash_only_without_post'] 
 };
 $refundTests['protected_gateway_rejects_direct_refund'] = static function () {
   $gateway = new \Drupal\commerce_paymos\Plugin\Commerce\PaymentGateway\Paymos();
-  refundThrows(static function () use ($gateway) { $gateway->refundPayment(new \PaymosDrupalRefundTest\Payment()); },'protected-action');
+  refundThrows(static function () use ($gateway) { $gateway->refundPayment(new \PaymosDrupalRefundTest\Payment()); },'payment refund form or the Paymos settings page');
 };
 $refundTests['native_minor_units_never_round_or_convert_crypto'] = static function () {
   refundExpect(RefundNativeGateway::minor('9007199254740993.01',2) === '900719925474099301','String minor conversion');
@@ -326,7 +326,7 @@ $refundTests['native_gateway_entry_checks_permissions_and_connection_capability'
     public $allowed = FALSE;
     public function hasPermission($permission) { return $this->allowed; }
   };
-  refundThrows(static function () use ($gateway,$payment,$account) { $gateway->requestRefund($payment,'full',refundToken(1),$account); },'access-denied');
+  refundThrows(static function () use ($gateway,$payment,$account) { $gateway->requestRefund($payment,'full',refundToken(1),$account); },'do not have permission to refund this Paymos payment');
   $account->allowed = TRUE; $clients->values['capabilities'] = [];
   refundExpect(!$gateway->canRefundPayment($payment),'Existing gateway capability preflight');
   refundThrows(static function () use ($gateway,$payment,$account) { $gateway->requestRefund($payment,'full',refundToken(1),$account); },'reconnect');
@@ -345,6 +345,26 @@ $refundTests['schema_hook_is_additive_idempotent_and_retains_legacy_bindings'] =
   foreach (['commerce_paymos_refund','commerce_paymos_refund_projection','commerce_paymos_refund_lock'] as $table) {
     refundExpect(isset($schema[$table]) && $db->tableExists($table),'Install and upgrade expose the same additive schema');
   }
+};
+
+$refundTests['drupal_sources_contain_no_placeholder_copy'] = static function () {
+  $marker = 'TODO' . '-COPY';
+  $srcDir = dirname(__DIR__) . '/src';
+  $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($srcDir, FilesystemIterator::SKIP_DOTS));
+  $checked = 0;
+  foreach ($iterator as $file) {
+    if (!$file->isFile()) { continue; }
+    $checked++;
+    $contents = (string)file_get_contents($file->getPathname());
+    refundExpect(strpos($contents,$marker) === FALSE,'Placeholder copy found in ' . $file->getPathname());
+  }
+  refundExpect($checked >= 6,'Expected Drupal Commerce source files to be scanned');
+  list($adapter,$store,$provider,$entities) = refundFixture();
+  $over = $adapter->request('1','overpayment',refundToken(1));
+  $provider->setStatus($over->withdrawalId(),'completed');
+  $adapter->reconcile($over->operationId());
+  $note = reset($entities->orders['10']->data['paymos_refund_notes']);
+  refundExpect(($note['code'] ?? '') === 'paymos_overpayment_refund','Overpayment note uses clean production code');
 };
 
 $failed = 0;
