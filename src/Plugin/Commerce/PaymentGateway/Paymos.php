@@ -45,14 +45,14 @@ final class Paymos extends OffsitePaymentGatewayBase implements SupportsRefundsI
   }
   public function refundPayment(PaymentInterface $payment, Price $amount = NULL) {
     // A direct call has no durable Form API token and cannot start cash.
-    throw new PaymentGatewayException('TODO-COPY:refund-protected-action-required');
+    throw new PaymentGatewayException('Paymos refunds must be started from the payment refund form or the Paymos settings page.');
   }
   public function requestRefund(PaymentInterface $payment, string $mode, string $token, $account) {
     if (!$payment->access('update',$account) || !$account->hasPermission('administer commerce_payment')
       || $payment->getPaymentGateway()->getPluginId() !== 'paymos'
       || $payment->getPaymentGatewayMode() !== $this->getMode()
       || $payment->getPaymentGateway()->getPlugin() !== $this) {
-      throw new PaymentGatewayException('TODO-COPY:refund-access-denied');
+      throw new PaymentGatewayException('You do not have permission to refund this Paymos payment.');
     }
     return $this->refunds->request((string)$payment->id(),$mode,$token,$mode === 'full' ? $payment->getAmount() : NULL);
   }

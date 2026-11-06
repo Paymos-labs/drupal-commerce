@@ -6,7 +6,7 @@ Accept payments through Paymos in Drupal Commerce. Version `1.0.0` is the first 
 
 Use Drupal `^10.3 || ^11` with Drupal Commerce `^3`. The module declares PHP `^8.1`; your Drupal version may require a newer PHP version, so follow the stricter requirement. Your store needs a public HTTPS address for the connection and payment notifications.
 
-The module uses the GPL-2.0-or-later license. Its PHP SDK dependency uses the MIT license and accepts compatible 1.x versions from 1.6.2 (`^1.6.2`).
+The module uses the GPL-2.0-or-later license. Its PHP SDK dependency uses the MIT license and accepts compatible 1.x versions from 1.9.1 (`^1.9.1`).
 
 ## Install the module
 
@@ -44,11 +44,22 @@ Cron checks unresolved payments in bounded batches. Keep it running even when pa
 
 Payment notifications carry a signature and trigger an API check. Before a payment is recorded, the invoice must match the order, Paymos project, environment, amount, and currency. A native SQL transaction records one completed Commerce payment; duplicate notifications do not record it again.
 
-Partial or late payments do not release goods automatically. A payment with mismatched details needs review. Drupal Commerce controls fulfillment through your store's own order workflow, so review that workflow when setting up the gateway. The module does not issue automatic refunds.
+Partial or late payments do not release goods automatically. A payment with mismatched details needs review. Drupal Commerce controls fulfillment through your store's own order workflow, so review that workflow when setting up the gateway.
+
+## Refunds
+
+The module supports native refunds through the Paymos Merchant API (`/v1/refunds`) in two server-calculated modes: `full` (full invoice refund) and `overpayment` (refund of the excess on a `paid_over` invoice). Paymos returns funds as a new outbound blockchain transfer strictly to the verified `first_sender` address recorded on the paid invoice — no recipient wallet address is entered manually, and arbitrary partial refund amounts are not supported.
+
+Authorized administrators can submit and monitor refunds from two protected entry points in Drupal:
+
+- the Commerce payment **Refund** operation form (`RefundForm`) on the order's **Payments** tab, which lets you select **Full refund** (`full`) or **Refund overpayment** (`overpayment`);
+- the **Paymos refunds** panel on `/admin/commerce/config/payment/paymos` (`ConnectForm`), which supports starting `full` and `overpayment` refunds for eligible Paymos payments and lists operation states and external refund observations.
+
+Signed webhook notifications at `/paymos/webhook` and Drupal cron reconciliation update pending refund operations and apply the native Commerce payment refund state once Paymos confirms completion (`completed`). In Sandbox mode, terminal refund outcomes (`completed`, `failed`, `cancelled`) can be simulated for testing.
 
 ## Remove the module
 
-Resolve outstanding payments before uninstalling. Uninstall stays blocked while payments remain unresolved. Once you can uninstall, the module deletes the encrypted credentials it owns and keeps the native Drupal Commerce payment records.
+Disconnecting Paymos on `/admin/commerce/config/payment/paymos` is blocked while refund history records exist for the store. Uninstalling the module is blocked while refund records or unresolved pending Paymos payments exist in the database (completed invoices and webhook event rows do not block disconnect or uninstall). When no pending payments or refund records block removal, uninstalling deletes the encrypted credentials owned by the module and keeps native Drupal Commerce payment records.
 
 ## More information
 

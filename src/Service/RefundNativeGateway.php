@@ -169,7 +169,7 @@ final class RefundNativeGateway {
     else {
       $order = $this->entities->getStorage('commerce_order')->load($snapshot['order_id']);
       $notes = $order->getData('paymos_refund_notes',[]);
-      $marker['note'] = ['code'=>'TODO-COPY:refund-overpayment-note','withdrawal_id'=>$refund->withdrawalId(),
+      $marker['note'] = ['code'=>'paymos_overpayment_refund','withdrawal_id'=>$refund->withdrawalId(),
         'amount'=>$refund->principalDecimal(),'asset'=>$refund->currency() . '/' . $refund->network(),'status'=>$refund->status()];
       $notes[$intent->operationId()] = $marker['note']; $order->setData('paymos_refund_notes',$notes)->save();
       $result = new NativeProjectionResult(NativeProjectionResult::EXACT_MATCH,$intent->mode(),$intent->operationId(),NULL,NULL,$refund->principalDecimal(),$refund->currency() . '/' . $refund->network());
@@ -222,7 +222,7 @@ final class RefundNativeGateway {
       if ($old !== NULL && isset($old['note']) && $refund->status() !== 'completed') {
         $marker['review_reason'] = 'cash_rewound'; $marker['projection_state'] = RefundStates::NATIVE_REVIEW;
       }
-      $marker['note'] = ['code'=>'TODO-COPY:refund-overpayment-note','withdrawal_id'=>$refund->withdrawalId(),
+      $marker['note'] = ['code'=>'paymos_overpayment_refund','withdrawal_id'=>$refund->withdrawalId(),
         'amount'=>$refund->principalDecimal(),'asset'=>$refund->currency() . '/' . $refund->network(),'status'=>$refund->status()];
       if ($refund->status() === 'completed' || ($old !== NULL && isset($old['note']))) {
         $notes[$id] = $marker['note']; $order->setData('paymos_refund_notes',$notes)->save();

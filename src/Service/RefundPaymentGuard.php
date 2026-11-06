@@ -21,7 +21,7 @@ final class RefundPaymentGuard {
     if ((!$payment->isNew() && !$original)
       || (in_array($state,['refunded','partially_refunded'],TRUE) && $state !== $previousState)
       || !self::sameAmount($original ? $original->getRefundedAmount() : NULL,$payment->getRefundedAmount())) {
-      throw new PaymentGatewayException('TODO-COPY:refund-protected-action-required');
+      throw new PaymentGatewayException('Paymos refunds must be started from the payment refund form or the Paymos settings page.');
     }
   }
 

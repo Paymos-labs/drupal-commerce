@@ -20,7 +20,7 @@ final class UninstallValidator implements ModuleUninstallValidatorInterface {
       foreach (['commerce_paymos_refund','commerce_paymos_refund_projection'] as $table) {
         if ($this->database->schema()->tableExists($table)
           && $this->database->select($table,'r')->countQuery()->execute()->fetchField()) {
-          return [(string)$this->t('TODO-COPY:refund-history-prevents-uninstall')];
+          return [(string)$this->t('Cannot uninstall Paymos while refund records exist in the database')];
         }
       }
     }
