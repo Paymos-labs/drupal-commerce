@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [1.1.8] - 2026-11-07
+
+- chore: rebuild canonical CMS package
+
 ## [1.1.7] - 2026-11-06
 
 - fix(cms): align marketplace manifests, refund copy, store links, and release guards
