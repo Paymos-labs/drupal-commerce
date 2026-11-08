@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [1.1.9] - 2026-11-08
+
+- chore: rebuild canonical CMS package
+
 ## [1.1.8] - 2026-11-07
 
 - chore: rebuild canonical CMS package
