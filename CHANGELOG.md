@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-11-10
+
+- chore: rebuild canonical CMS package
+
 ## [1.2.0] - 2026-11-10
 
 - feat(notifications): rewrite all 71 email and 52 Telegram RU templates, lifecycle series, and R01-R34 audit fixes
