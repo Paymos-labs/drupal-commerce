@@ -105,7 +105,6 @@ final class ConnectForm extends FormBase {
     foreach (\Drupal::service('commerce_paymos.refunds')->candidates() as $payment) {
       $options[(string)$payment->id()] = $this->t('Payment #@id',['@id'=>$payment->id()]);
     }
-    if (!$form_state->get('paymos_refund_token')) { $form_state->set('paymos_refund_token',\Drupal::service('uuid')->generate()); }
     $form['refunds'] = ['#type'=>'details','#title'=>$this->t('Paymos refunds'),'#open'=>TRUE];
     $form['refunds']['refund_payment'] = ['#type'=>'select','#title'=>$this->t('Payment'),
       '#options'=>$options,'#empty_option'=>$this->t('- Select a payment -')];
@@ -137,7 +136,15 @@ final class ConnectForm extends FormBase {
     try {
       $payment = \Drupal::service('entity_type.manager')->getStorage('commerce_payment')->load($form_state->getValue('refund_payment'));
       if (!$payment || !$payment->getPaymentGateway() || $payment->getPaymentGateway()->getPluginId() !== 'paymos') { throw new \RuntimeException('refund_payment_missing'); }
-      $payment->getPaymentGateway()->getPlugin()->requestRefund($payment,$mode,$form_state->get('paymos_refund_token'),$this->currentUser());
+      // Keep retries idempotent, including when the admin switches away and back.
+      // A different payment or refund mode is a different operation.
+      $operation = (string)$payment->id() . ':' . $mode;
+      $tokens = $form_state->get('paymos_refund_tokens') ?: [];
+      if (!isset($tokens[$operation])) {
+        $tokens[$operation] = \Drupal::service('uuid')->generate();
+        $form_state->set('paymos_refund_tokens',$tokens);
+      }
+      $payment->getPaymentGateway()->getPlugin()->requestRefund($payment,$mode,$tokens[$operation],$this->currentUser());
       $this->messenger()->addStatus($this->t('Paymos refund request recorded. Check the operation status below.'));
     }
     catch (\Throwable $e) { $this->messenger()->addError($this->t('Could not complete the Paymos refund request. Review the payment and operation status before retrying.')); }

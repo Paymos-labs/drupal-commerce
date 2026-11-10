@@ -1,0 +1,100 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: commerce_paymos\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: de\n"
+
+msgid "Paymos connection saved."
+msgstr "Die Paymos-Verbindung wurde gespeichert."
+
+
+msgid "Connect Paymos before accepting payments."
+msgstr "Verbinden Sie Paymos, um Zahlungen anzunehmen."
+
+
+msgid "Success return URL"
+msgstr "Rückkehr-URL nach erfolgreicher Zahlung"
+
+
+msgid "Failure return URL"
+msgstr "Rückkehr-URL bei fehlgeschlagener Zahlung"
+
+
+msgid "Connect Paymos"
+msgstr "Paymos verbinden"
+
+
+msgid "Approve the connection in Paymos, then check approval here."
+msgstr "Bestätigen Sie die Verbindung in Paymos und prüfen Sie die Freigabe anschließend hier."
+
+
+msgid "Check approval"
+msgstr "Freigabe prüfen"
+
+
+msgid "Disconnect Paymos"
+msgstr "Paymos trennen"
+
+
+msgid "Check pending payments"
+msgstr "Ausstehende Zahlungen prüfen"
+
+
+msgid "Could not connect to Paymos. Try again."
+msgstr "Die Verbindung zu Paymos ist fehlgeschlagen. Versuchen Sie es erneut."
+
+
+msgid "Cannot disconnect Paymos while refund history exists for this store."
+msgstr "Paymos kann nicht getrennt werden, solange für diesen Shop eine Erstattungshistorie vorliegt."
+
+
+msgid "Paymos connection removed."
+msgstr "Die Paymos-Verbindung wurde getrennt."
+
+
+msgid "Checked @count pending payments."
+msgstr "@count ausstehende Zahlungen wurden geprüft."
+
+
+msgid "Payment #@id"
+msgstr "Zahlung Nr. @id"
+
+
+msgid "Paymos refunds"
+msgstr "Paymos-Erstattungen"
+
+
+msgid "Payment"
+msgstr "Zahlung"
+
+
+msgid "- Select a payment -"
+msgstr "- Zahlung auswählen -"
+
+
+msgid "Full refund"
+msgstr "Vollständige Erstattung"
+
+
+msgid "Refund overpayment"
+msgstr "Überzahlung erstatten"
+
+
+msgid "Refund operation"
+msgstr "Erstattungsvorgang"
+
+
+msgid "External refund observation"
+msgstr "Erstattung außerhalb von Drupal Commerce"
+
+
+msgid "Paymos refund request recorded. Check the operation status below."
+msgstr "Die Paymos-Erstattungsanfrage wurde gespeichert. Prüfen Sie unten den Status des Vorgangs."
+
+
+msgid "Could not complete the Paymos refund request. Review the payment and operation status before retrying."
+msgstr "Die Paymos-Erstattungsanfrage konnte nicht abgeschlossen werden. Prüfen Sie die Zahlung und den Vorgangsstatus, bevor Sie es erneut versuchen."
+
+
+msgid "Copy these addresses once into Success URL and Fail URL in your existing Paymos project. They let the checkout’s Back to store link return the buyer to Drupal Commerce."
+msgstr "Tragen Sie diese Adressen einmal unter Success URL und Fail URL in Ihrem bestehenden Paymos-Projekt ein. Der Link zur Rückkehr in den Shop auf der Zahlungsseite führt dann zu Drupal Commerce."

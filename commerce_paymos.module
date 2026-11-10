@@ -4,6 +4,14 @@
 
 \Drupal\commerce_paymos\SdkBootstrap::register();
 
+/** Use bundled translations regardless of the module's installation directory. */
+function commerce_paymos_locale_translation_projects_alter(array &$projects): void {
+  if (isset($projects['commerce_paymos'])) {
+    $path = \Drupal::service('extension.list.module')->getPath('commerce_paymos');
+    $projects['commerce_paymos']->info['interface translation server pattern'] = $path . '/translations/commerce_paymos.%language.po';
+  }
+}
+
 function commerce_paymos_commerce_payment_presave(\Drupal\commerce_payment\Entity\PaymentInterface $payment): void {
   \Drupal\commerce_paymos\Service\RefundPaymentGuard::assertSave($payment);
 }

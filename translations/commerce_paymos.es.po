@@ -1,0 +1,100 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: commerce_paymos\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: es\n"
+
+msgid "Paymos connection saved."
+msgstr "Se ha guardado la conexión con Paymos."
+
+
+msgid "Connect Paymos before accepting payments."
+msgstr "Conecte Paymos para empezar a aceptar pagos."
+
+
+msgid "Success return URL"
+msgstr "URL de retorno tras el pago"
+
+
+msgid "Failure return URL"
+msgstr "URL de retorno si falla el pago"
+
+
+msgid "Connect Paymos"
+msgstr "Conectar Paymos"
+
+
+msgid "Approve the connection in Paymos, then check approval here."
+msgstr "Autorice la conexión en Paymos y compruebe aquí la autorización."
+
+
+msgid "Check approval"
+msgstr "Comprobar autorización"
+
+
+msgid "Disconnect Paymos"
+msgstr "Desconectar Paymos"
+
+
+msgid "Check pending payments"
+msgstr "Consultar pagos pendientes"
+
+
+msgid "Could not connect to Paymos. Try again."
+msgstr "No se pudo conectar con Paymos. Inténtelo de nuevo."
+
+
+msgid "Cannot disconnect Paymos while refund history exists for this store."
+msgstr "No se puede desconectar Paymos mientras la tienda conserve un historial de reembolsos."
+
+
+msgid "Paymos connection removed."
+msgstr "Se ha desconectado Paymos."
+
+
+msgid "Checked @count pending payments."
+msgstr "Se han consultado @count pagos pendientes."
+
+
+msgid "Payment #@id"
+msgstr "Pago n.º @id"
+
+
+msgid "Paymos refunds"
+msgstr "Reembolsos de Paymos"
+
+
+msgid "Payment"
+msgstr "Pago"
+
+
+msgid "- Select a payment -"
+msgstr "- Seleccione un pago -"
+
+
+msgid "Full refund"
+msgstr "Reembolso completo"
+
+
+msgid "Refund overpayment"
+msgstr "Reembolsar el exceso"
+
+
+msgid "Refund operation"
+msgstr "Operación de reembolso"
+
+
+msgid "External refund observation"
+msgstr "Reembolso fuera de Drupal Commerce"
+
+
+msgid "Paymos refund request recorded. Check the operation status below."
+msgstr "Se ha registrado la solicitud de reembolso de Paymos. Consulte el estado de la operación a continuación."
+
+
+msgid "Could not complete the Paymos refund request. Review the payment and operation status before retrying."
+msgstr "No se pudo completar la solicitud de reembolso de Paymos. Revise el pago y el estado de la operación antes de volver a intentarlo."
+
+
+msgid "Copy these addresses once into Success URL and Fail URL in your existing Paymos project. They let the checkout’s Back to store link return the buyer to Drupal Commerce."
+msgstr "Copie estas direcciones en los campos Success URL y Fail URL de su proyecto de Paymos. El enlace para volver a la tienda de la página de pago llevará al comprador a Drupal Commerce."

@@ -1,0 +1,100 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: commerce_paymos\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: zh-hans\n"
+
+msgid "Paymos connection saved."
+msgstr "Paymos 连接已保存。"
+
+
+msgid "Connect Paymos before accepting payments."
+msgstr "请先连接 Paymos，再接受付款。"
+
+
+msgid "Success return URL"
+msgstr "支付成功后的返回地址"
+
+
+msgid "Failure return URL"
+msgstr "支付失败后的返回地址"
+
+
+msgid "Connect Paymos"
+msgstr "连接 Paymos"
+
+
+msgid "Approve the connection in Paymos, then check approval here."
+msgstr "请在 Paymos 中授权连接，然后在此检查授权状态。"
+
+
+msgid "Check approval"
+msgstr "检查授权"
+
+
+msgid "Disconnect Paymos"
+msgstr "断开 Paymos 连接"
+
+
+msgid "Check pending payments"
+msgstr "检查待处理付款"
+
+
+msgid "Could not connect to Paymos. Try again."
+msgstr "无法连接 Paymos，请重试。"
+
+
+msgid "Cannot disconnect Paymos while refund history exists for this store."
+msgstr "此商店仍有退款记录，无法断开 Paymos 连接。"
+
+
+msgid "Paymos connection removed."
+msgstr "Paymos 连接已断开。"
+
+
+msgid "Checked @count pending payments."
+msgstr "已检查 @count 笔待处理付款。"
+
+
+msgid "Payment #@id"
+msgstr "付款 #@id"
+
+
+msgid "Paymos refunds"
+msgstr "Paymos 退款"
+
+
+msgid "Payment"
+msgstr "付款"
+
+
+msgid "- Select a payment -"
+msgstr "- 选择付款 -"
+
+
+msgid "Full refund"
+msgstr "全额退款"
+
+
+msgid "Refund overpayment"
+msgstr "退还多付金额"
+
+
+msgid "Refund operation"
+msgstr "退款操作"
+
+
+msgid "External refund observation"
+msgstr "在 Drupal Commerce 外发起的退款"
+
+
+msgid "Paymos refund request recorded. Check the operation status below."
+msgstr "Paymos 退款请求已记录。请在下方查看操作状态。"
+
+
+msgid "Could not complete the Paymos refund request. Review the payment and operation status before retrying."
+msgstr "无法完成 Paymos 退款请求。请先核对付款和操作状态，再重试。"
+
+
+msgid "Copy these addresses once into Success URL and Fail URL in your existing Paymos project. They let the checkout’s Back to store link return the buyer to Drupal Commerce."
+msgstr "请将这两个地址分别填入现有 Paymos 项目的 Success URL 和 Fail URL。付款页面上的返回商店链接会将买家带回 Drupal Commerce。"

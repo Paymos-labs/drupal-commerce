@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-10
+
+- feat(notifications): rewrite all 71 email and 52 Telegram RU templates, lifecycle series, and R01-R34 audit fixes
+- chore: bundle Paymos PHP SDK v1.10.0
+- chore: rebuild canonical CMS package
+
 ## [1.1.10] - 2026-11-08
 
 - chore: rebuild canonical CMS package

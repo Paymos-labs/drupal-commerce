@@ -3,5 +3,8 @@ type: module
 description: 'Paymos payment gateway for Drupal Commerce.'
 package: Commerce
 core_version_requirement: ^10.3 || ^11
+interface translation project: commerce_paymos
+interface translation server pattern: translations/commerce_paymos.%language.po
 dependencies:
   - commerce:commerce_payment
+  - drupal:locale

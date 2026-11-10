@@ -40,7 +40,7 @@ final class PaymentProcessor {
     catch (SignatureMismatchException|TimestampSkewException $e) { return 401; }
     catch (EventInProgressException|PaymentBusyException $e) { return 409; }
     catch (\InvalidArgumentException|\JsonException $e) { return 400; }
-    catch (\Throwable $e) { return 503; }
+    catch (\Throwable $e) { return 500; }
     finally { $this->events->releaseAll(); }
   }
 

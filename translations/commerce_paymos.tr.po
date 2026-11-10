@@ -1,0 +1,100 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: commerce_paymos\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: tr\n"
+
+msgid "Paymos connection saved."
+msgstr "Paymos bağlantısı kaydedildi."
+
+
+msgid "Connect Paymos before accepting payments."
+msgstr "Ödeme almaya başlamadan önce Paymos’u bağlayın."
+
+
+msgid "Success return URL"
+msgstr "Başarılı ödeme dönüş adresi"
+
+
+msgid "Failure return URL"
+msgstr "Başarısız ödeme dönüş adresi"
+
+
+msgid "Connect Paymos"
+msgstr "Paymos’u bağla"
+
+
+msgid "Approve the connection in Paymos, then check approval here."
+msgstr "Paymos’ta bağlantıyı onaylayın, ardından onay durumunu buradan kontrol edin."
+
+
+msgid "Check approval"
+msgstr "Onayı kontrol et"
+
+
+msgid "Disconnect Paymos"
+msgstr "Paymos bağlantısını kes"
+
+
+msgid "Check pending payments"
+msgstr "Bekleyen ödemeleri kontrol et"
+
+
+msgid "Could not connect to Paymos. Try again."
+msgstr "Paymos’a bağlanılamadı. Tekrar deneyin."
+
+
+msgid "Cannot disconnect Paymos while refund history exists for this store."
+msgstr "Mağazada iade geçmişi bulunduğu sürece Paymos bağlantısı kesilemez."
+
+
+msgid "Paymos connection removed."
+msgstr "Paymos bağlantısı kesildi."
+
+
+msgid "Checked @count pending payments."
+msgstr "@count bekleyen ödeme kontrol edildi."
+
+
+msgid "Payment #@id"
+msgstr "Ödeme no. @id"
+
+
+msgid "Paymos refunds"
+msgstr "Paymos iadeleri"
+
+
+msgid "Payment"
+msgstr "Ödeme"
+
+
+msgid "- Select a payment -"
+msgstr "- Ödeme seçin -"
+
+
+msgid "Full refund"
+msgstr "Tam iade"
+
+
+msgid "Refund overpayment"
+msgstr "Fazla ödemeyi iade et"
+
+
+msgid "Refund operation"
+msgstr "İade işlemi"
+
+
+msgid "External refund observation"
+msgstr "Drupal Commerce dışında yapılan iade"
+
+
+msgid "Paymos refund request recorded. Check the operation status below."
+msgstr "Paymos iade talebi kaydedildi. İşlem durumunu aşağıdan kontrol edin."
+
+
+msgid "Could not complete the Paymos refund request. Review the payment and operation status before retrying."
+msgstr "Paymos iade talebi tamamlanamadı. Tekrar denemeden önce ödemeyi ve işlem durumunu kontrol edin."
+
+
+msgid "Copy these addresses once into Success URL and Fail URL in your existing Paymos project. They let the checkout’s Back to store link return the buyer to Drupal Commerce."
+msgstr "Bu adresleri mevcut Paymos projenizdeki Success URL ve Fail URL alanlarına bir kez kopyalayın. Ödeme sayfasındaki mağazaya dönüş bağlantısı müşteriyi Drupal Commerce’e yönlendirir."

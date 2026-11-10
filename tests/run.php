@@ -138,7 +138,7 @@ $tests['different_event_id_cannot_credit_same_invoice_again']=static function():
 };
 $tests['failure_after_payment_rolls_back_and_retry_recovers']=static function():void {
  $s=seeded();$s->failEvent=TRUE;$t=new MockTransport([response(fixture()),response(fixture())]);$p=new PaymentProcessor($s,new TestClients($t),new TestEvents($s));$b=eventBody(fixture());
- expect($p->handle($b,signature($b),1700000000)===503&&!$s->payments&&!$s->events&&!$s->records['1']['credited'],'transaction seam rolls all effects back');
+ expect($p->handle($b,signature($b),1700000000)===500&&!$s->payments&&!$s->events&&!$s->records['1']['credited'],'transaction seam rolls all effects back and reports an internal error');
  expect($p->handle($b,signature($b),1700000000)===200&&count($s->payments)===1,'recovery credits once');
 };
 $tests['missed_webhook_reconciliation_uses_the_same_guards']=static function():void {

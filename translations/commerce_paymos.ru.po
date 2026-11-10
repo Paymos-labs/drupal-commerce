@@ -1,0 +1,100 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: commerce_paymos\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: ru\n"
+
+msgid "Paymos connection saved."
+msgstr "Подключение Paymos сохранено."
+
+
+msgid "Connect Paymos before accepting payments."
+msgstr "Подключите Paymos, чтобы принимать оплату."
+
+
+msgid "Success return URL"
+msgstr "Адрес возврата после оплаты"
+
+
+msgid "Failure return URL"
+msgstr "Адрес возврата при ошибке оплаты"
+
+
+msgid "Connect Paymos"
+msgstr "Подключить Paymos"
+
+
+msgid "Approve the connection in Paymos, then check approval here."
+msgstr "Подтвердите подключение в Paymos, затем проверьте его здесь."
+
+
+msgid "Check approval"
+msgstr "Проверить подтверждение"
+
+
+msgid "Disconnect Paymos"
+msgstr "Отключить Paymos"
+
+
+msgid "Check pending payments"
+msgstr "Проверить ожидающие платежи"
+
+
+msgid "Could not connect to Paymos. Try again."
+msgstr "Не удалось подключить Paymos. Попробуйте ещё раз."
+
+
+msgid "Cannot disconnect Paymos while refund history exists for this store."
+msgstr "Нельзя отключить Paymos, пока в магазине хранится история возвратов."
+
+
+msgid "Paymos connection removed."
+msgstr "Paymos отключён."
+
+
+msgid "Checked @count pending payments."
+msgstr "Проверено ожидающих платежей: @count."
+
+
+msgid "Payment #@id"
+msgstr "Платёж № @id"
+
+
+msgid "Paymos refunds"
+msgstr "Возвраты Paymos"
+
+
+msgid "Payment"
+msgstr "Платёж"
+
+
+msgid "- Select a payment -"
+msgstr "- Выберите платёж -"
+
+
+msgid "Full refund"
+msgstr "Полный возврат"
+
+
+msgid "Refund overpayment"
+msgstr "Вернуть переплату"
+
+
+msgid "Refund operation"
+msgstr "Операция возврата"
+
+
+msgid "External refund observation"
+msgstr "Возврат вне Drupal Commerce"
+
+
+msgid "Paymos refund request recorded. Check the operation status below."
+msgstr "Запрос возврата Paymos сохранён. Статус операции указан ниже."
+
+
+msgid "Could not complete the Paymos refund request. Review the payment and operation status before retrying."
+msgstr "Не удалось завершить запрос возврата Paymos. Перед повторной попыткой проверьте платёж и статус операции."
+
+
+msgid "Copy these addresses once into Success URL and Fail URL in your existing Paymos project. They let the checkout’s Back to store link return the buyer to Drupal Commerce."
+msgstr "Скопируйте эти адреса в поля Success URL и Fail URL существующего проекта Paymos. Тогда ссылка «Вернуться в магазин» на странице оплаты направит покупателя в Drupal Commerce."
