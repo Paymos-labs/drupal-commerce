@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [1.2.6] - 2026-11-13
+
+- chore: rebuild canonical CMS package
+
 ## [1.2.5] - 2026-11-13
 
 - fix(plugins,publicweb): SDK webhook credit recipes, CMS recovery, redirects and CSP logs (audit 2026-11-13)
