@@ -6,6 +6,8 @@ namespace Drupal\commerce_paymos\Service;
 use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Core\Database\Connection;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\KeyValueStore\KeyValueFactoryInterface;
+use Drupal\Core\KeyValueStore\KeyValueStoreInterface;
 use Drupal\Core\Lock\LockBackendInterface;
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_payment\PaymentOrderUpdaterInterface;
@@ -14,9 +16,18 @@ use Paymos\Plugin\AmountGuard;
 
 /** Database row locks and transactions remain authoritative if a lease expires. */
 final class InvoiceStore implements PaymentStoreInterface {
+  /** Key-value collection: replaced invoice id => order id (48-01). */
+  private const PREVIOUS_INVOICES = 'commerce_paymos.previous_invoice';
+
   public function __construct(private Connection $db, private EntityTypeManagerInterface $entities,
     private LockBackendInterface $locks, private TimeInterface $time,
-    private PaymentOrderUpdaterInterface $paymentOrderUpdater) {}
+    private PaymentOrderUpdaterInterface $paymentOrderUpdater,
+    private ?KeyValueFactoryInterface $keyValue = NULL) {}
+
+  /** The database key-value backend shares the connection, so writes join the open transaction. */
+  private function previousInvoices(): KeyValueStoreInterface {
+    return ($this->keyValue ?? \Drupal::service('keyvalue'))->get(self::PREVIOUS_INVOICES);
+  }
 
   public function synchronized(string $orderId, callable $action): mixed {
     $key = 'commerce_paymos:order:' . hash('sha256', $orderId);
@@ -72,12 +83,25 @@ final class InvoiceStore implements PaymentStoreInterface {
     return $data === FALSE ? NULL : json_decode($data,TRUE,512,JSON_THROW_ON_ERROR);
   }
 
+  public function byPreviousInvoice(string $invoiceId): ?array {
+    if ($invoiceId === '') { return NULL; }
+    $orderId = $this->previousInvoices()->get($invoiceId);
+    if (!is_string($orderId) || $orderId === '') { return NULL; }
+    $record = $this->load($orderId);
+    return $record !== NULL && isset($record['history'][$invoiceId]) ? $record : NULL;
+  }
+
   public function save(array $record): void {
     $this->db->merge('commerce_paymos_invoice')->key('order_id',$record['order_id'])->fields([
       'invoice_id'=>($record['invoice_id']??'') !== '' ? $record['invoice_id'] : NULL,
       'data'=>json_encode($record,JSON_THROW_ON_ERROR), 'credited'=>empty($record['credited'])?0:1,
       'updated'=>$this->time->getCurrentTime(),
     ])->execute();
+    // The row is keyed by order and indexes only the current invoice; replaced
+    // invoices stay reachable for their late notifications through this index.
+    foreach (array_keys($record['history'] ?? []) as $invoiceId) {
+      $this->previousInvoices()->setIfNotExists((string) $invoiceId, (string) $record['order_id']);
+    }
   }
 
   public function isCommitted(string $eventId): bool {

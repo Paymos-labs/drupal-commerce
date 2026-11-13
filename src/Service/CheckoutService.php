@@ -58,6 +58,10 @@ final class CheckoutService {
           $snapshot = $this->store->snapshot($orderId);
           $this->assertOrder($snapshot, $gatewayId);
           $record = $this->newIntent($snapshot, $environment, $config['project_id']);
+          // The closed invoice can still report money that arrived after it
+          // closed (invoice.paid_late). Keep its binding so that notice reaches
+          // the order as a note instead of being refused as unknown (48-01).
+          $record['history'] = ($current['history'] ?? []) + [$invoiceId => self::binding($current)];
           $this->store->save($record);
           return $record;
         }, TRUE);
@@ -100,6 +104,14 @@ final class CheckoutService {
       'project_id'=>$project, 'external_order_id'=>IdempotencyKey::externalOrderId('dc'),
       'amount'=>$order['amount'], 'currency'=>$order['currency'], 'invoice_id'=>'', 'payment_url'=>'',
       'status'=>'', 'credited'=>FALSE, 'late_noted'=>FALSE];
+  }
+
+  /** The fields a replaced invoice's verified event is matched and reverse-verified against. */
+  private static function binding(array $record): array {
+    return ['invoice_id'=>$record['invoice_id'], 'external_order_id'=>$record['external_order_id'],
+      'environment'=>$record['environment'], 'project_id'=>$record['project_id'],
+      'amount'=>$record['amount'], 'currency'=>$record['currency'],
+      'status'=>(string) ($record['status'] ?? ''), 'late_noted'=>!empty($record['late_noted'])];
   }
 
   private function sameSnapshot(array $record, array $order, string $environment, string $project): bool {

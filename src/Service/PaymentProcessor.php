@@ -32,7 +32,7 @@ final class PaymentProcessor {
         return 200;
       }
       if (!$event->isInvoiceEvent()) { return 200; }
-      $record = $this->store->byInvoice($event->invoiceId());
+      $record = $this->store->byInvoice($event->invoiceId()) ?? $this->store->byPreviousInvoice($event->invoiceId());
       if ($record === NULL) { return 409; } // A callback may beat the create response.
       return $this->apply($record, $match->environment(), $event);
     }
@@ -67,6 +67,10 @@ final class PaymentProcessor {
       return $this->store->transaction($known['order_id'], function () use ($known, $environment, $event): int {
         if ($this->store->isCommitted($event->id())) { return 200; }
         $record = $this->store->load($known['order_id']);
+        if ($record !== NULL && ($record['invoice_id'] ?? '') !== $event->invoiceId()
+          && isset($record['history'][$event->invoiceId()])) {
+          return $this->applyPrevious($record, $environment, $event);
+        }
         if ($record === NULL || ($record['invoice_id'] ?? '') !== $event->invoiceId()
           || $record['environment'] !== $environment || $record['project_id'] !== $event->projectId()
           || $record['external_order_id'] !== $event->externalOrderId()) { return 409; }
@@ -114,5 +118,33 @@ final class PaymentProcessor {
         return 200;
       });
     });
+  }
+
+  /**
+   * A verified event for an invoice this order replaced (48-01). The current
+   * binding and native payment are never touched: a late payment becomes one
+   * order note, status events of the closed invoice are acknowledged without
+   * effect, and a completion is refused (a closed invoice cannot be paid).
+   * Runs inside apply()'s order lock and transaction.
+   */
+  private function applyPrevious(array $record, string $environment, WebhookEvent $event): int {
+    $previous = $record['history'][$event->invoiceId()];
+    if ($previous['environment'] !== $environment || $previous['project_id'] !== $event->projectId()
+      || $previous['external_order_id'] !== $event->externalOrderId()) { return 409; }
+    $action = StatusMapper::invoiceAction($event->type(), $event->status());
+    if ($action === StatusMapper::ACTION_PAYMENT_COMPLETE) { return 409; }
+    if ($action !== StatusMapper::ACTION_NOTE_PAID_LATE || !empty($previous['late_noted'])) {
+      $this->store->commitEvent($event->id());
+      return 200;
+    }
+    $config = $this->clients->configuration($environment);
+    if ($config['project_id'] !== $previous['project_id']) { return 409; }
+    $result = (new InvoiceReverseVerifier($this->clients->create($environment)))->verify($event, $previous);
+    if (!$result->isVerified()) { return 409; }
+    $this->store->note($record['order_id'], 'paymos_paid_late');
+    $record['history'][$event->invoiceId()]['late_noted'] = TRUE;
+    $this->store->save($record);
+    $this->store->commitEvent($event->id());
+    return 200;
   }
 }

@@ -283,6 +283,7 @@ final class FailOnceStore implements PaymentStoreInterface {
   public function snapshot(string $id): array { return $this->inner->snapshot($id); }
   public function load(string $id): ?array { return $this->inner->load($id); }
   public function byInvoice(string $id): ?array { return $this->inner->byInvoice($id); }
+  public function byPreviousInvoice(string $id): ?array { return $this->inner->byPreviousInvoice($id); }
   public function save(array $record): void { $this->inner->save($record); }
   public function isCommitted(string $id): bool { return $this->inner->isCommitted($id); }
   public function commitEvent(string $id): void {

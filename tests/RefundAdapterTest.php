@@ -29,6 +29,7 @@ final class RefundInvoices implements PaymentStoreInterface {
   public $record = ['order_id'=>'10','gateway_id'=>'paymos','invoice_id'=>'inv_fixture','project_id'=>'prj_fixture',
     'environment'=>'sandbox','amount'=>'100.00','currency'=>'USD','credited'=>TRUE];
   public function byInvoice(string $id): ?array { return $id === 'inv_fixture' ? $this->record : NULL; }
+  public function byPreviousInvoice(string $id): ?array { return NULL; }
   public function synchronized(string $id, callable $action) { return $action(); }
   public function transaction(string $id, callable $action, bool $durable = FALSE) { return $action(); }
   public function snapshot(string $id): array { return []; }

@@ -8,6 +8,8 @@ interface PaymentStoreInterface {
   public function snapshot(string $orderId): array;
   public function load(string $orderId): ?array;
   public function byInvoice(string $invoiceId): ?array;
+  /** The order record whose `history` holds this replaced invoice's binding, or NULL. */
+  public function byPreviousInvoice(string $invoiceId): ?array;
   public function save(array $record): void;
   public function isCommitted(string $eventId): bool;
   public function commitEvent(string $eventId): void;

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\commerce_paymos\Service;
 
+use Drupal\Core\Lock\LockBackendInterface;
 use Drupal\Core\PrivateKey;
 use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Core\Site\Settings;
@@ -20,12 +21,48 @@ final class ConnectionStore {
   private const DEVICE = 'commerce_paymos.device';
   private const AAD = 'paymos-drupal-commerce-v1';
 
+  private const LOCK = 'commerce_paymos.connect';
+
   public function __construct(
     private StateInterface $state,
     private PrivateKey $privateKey,
     private RequestStack $requests,
     private TimeInterface $time,
+    private ?LockBackendInterface $lock = NULL,
   ) { SdkBootstrap::register(); }
+
+  /**
+   * Runs $action only while the stored Connect attempt is still the one
+   * identified by $deviceCode (48-02). A poll's HTTP request runs outside this
+   * lock; another administrator may start a newer attempt meanwhile, and the
+   * older poll's result must neither replace that attempt's state nor clear it
+   * nor write the older approval's credentials. Every device-state write goes
+   * through this lock, so the check and the write are one step.
+   */
+  public function whileCurrentAttempt(string $deviceCode, callable $action): mixed {
+    return $this->locked(function () use ($deviceCode, $action): mixed {
+      $current = $this->device();
+      if (!$current || !is_string($current['device_code'] ?? NULL) || !hash_equals($current['device_code'], $deviceCode)) {
+        throw new \RuntimeException('paymos_connect_attempt_replaced');
+      }
+      return $action();
+    });
+  }
+
+  /** Starts a new attempt; it replaces any earlier one. */
+  public function startAttempt(array $device): void {
+    $this->locked(function () use ($device): void { $this->saveDevice($device); });
+  }
+
+  private function locked(callable $action): mixed {
+    $lock = $this->lock ?? \Drupal::lock();
+    if (!$lock->acquire(self::LOCK, 30.0)) {
+      $lock->wait(self::LOCK, 10);
+      if (!$lock->acquire(self::LOCK, 30.0)) { throw new \RuntimeException('paymos_connect_busy'); }
+    }
+    try { return $action(); }
+    finally { $lock->release(self::LOCK); }
+  }
 
   public function sourceUrl(): string {
     $request = $this->requests->getCurrentRequest();

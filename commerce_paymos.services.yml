@@ -4,13 +4,13 @@ services:
     arguments: ['@request_stack', '@datetime.time', '@entity_type.manager']
   commerce_paymos.connection:
     class: Drupal\commerce_paymos\Service\ConnectionStore
-    arguments: ['@state', '@private_key', '@request_stack', '@datetime.time']
+    arguments: ['@state', '@private_key', '@request_stack', '@datetime.time', '@lock']
   commerce_paymos.client_factory:
     class: Drupal\commerce_paymos\Service\ClientFactory
     arguments: ['@commerce_paymos.connection']
   commerce_paymos.store:
     class: Drupal\commerce_paymos\Service\InvoiceStore
-    arguments: ['@database', '@entity_type.manager', '@lock', '@datetime.time', '@commerce_payment.order_updater']
+    arguments: ['@database', '@entity_type.manager', '@lock', '@datetime.time', '@commerce_payment.order_updater', '@keyvalue']
   commerce_paymos.events:
     class: Drupal\commerce_paymos\Service\EventStore
     arguments: ['@commerce_paymos.store', '@lock']

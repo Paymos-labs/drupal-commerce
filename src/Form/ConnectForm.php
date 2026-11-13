@@ -60,7 +60,7 @@ final class ConnectForm extends FormBase {
         Url::fromRoute('commerce_paymos.connect',[],['absolute'=>TRUE])->toString());
       $device['owner_uid'] = (string)$this->currentUser()->id();
       $device['next_poll'] = $this->time->getCurrentTime()+(int)$device['interval'];
-      $this->connection->saveDevice($device);
+      $this->connection->startAttempt($device);
     }
     catch (\Throwable $e) { $this->messenger()->addError($this->t('Could not connect to Paymos. Try again.')); }
     $form_state->setRebuild();
@@ -73,18 +73,26 @@ final class ConnectForm extends FormBase {
       if ($now < (int)($device['next_poll']??0)) {
         $this->messenger()->addStatus($this->t('Approve the connection in Paymos, then check approval here.')); $form_state->setRebuild(); return;
       }
-      $device['next_poll'] = $now+max(1,(int)$device['interval']); $this->connection->saveDevice($device);
-      $result = $this->client->poll($device['device_code']);
+      // Every write below is fenced to this attempt's device code (48-02): a
+      // newer attempt started by another administrator during the poll is
+      // neither overwritten, cleared, nor replaced by this attempt's approval.
+      $code = (string)$device['device_code'];
+      $device['next_poll'] = $now+max(1,(int)$device['interval']);
+      $this->connection->whileCurrentAttempt($code, fn() => $this->connection->saveDevice($device));
+      $result = $this->client->poll($code);
       if ($result['status']==='connected') {
-        $this->connection->accept($result,$device['source_url']);
+        $this->connection->whileCurrentAttempt($code, fn() => $this->connection->accept($result,$device['source_url']));
         $this->messenger()->addStatus($this->t('Paymos connection saved.'));
       }
       elseif (in_array($result['status'],['authorization_pending','slow_down'],TRUE)) {
         if ($result['status']==='slow_down') { $device['interval']+=5; $device['next_poll']=$now+$device['interval']; }
-        $this->connection->saveDevice($device);
+        $this->connection->whileCurrentAttempt($code, fn() => $this->connection->saveDevice($device));
         $this->messenger()->addStatus($this->t('Approve the connection in Paymos, then check approval here.'));
       }
-      else { $this->connection->clearDevice(); $this->messenger()->addError($this->t('Could not connect to Paymos. Try again.')); }
+      else {
+        $this->connection->whileCurrentAttempt($code, fn() => $this->connection->clearDevice());
+        $this->messenger()->addError($this->t('Could not connect to Paymos. Try again.'));
+      }
     }
     catch (\Throwable $e) { $this->messenger()->addError($this->t('Could not connect to Paymos. Try again.')); }
     $form_state->setRebuild();

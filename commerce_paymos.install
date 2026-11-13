@@ -79,4 +79,5 @@ function commerce_paymos_update_10001(): void {
 function commerce_paymos_uninstall(): void {
   \Drupal::state()->delete('commerce_paymos.connection');
   \Drupal::state()->delete('commerce_paymos.device');
+  \Drupal::keyValue('commerce_paymos.previous_invoice')->deleteAll();
 }

@@ -34,6 +34,7 @@ final class MemoryStore implements PaymentStoreInterface {
   public function snapshot(string $orderId): array { return $this->order; }
   public function load(string $orderId): ?array { return $this->records[$orderId]??NULL; }
   public function byInvoice(string $invoiceId): ?array { foreach($this->records as $r) { if(($r['invoice_id']??'')===$invoiceId)return $r; } return NULL; }
+  public function byPreviousInvoice(string $invoiceId): ?array { foreach($this->records as $r) { if(isset($r['history'][$invoiceId]))return $r; } return NULL; }
   public function save(array $record): void { $this->records[$record['order_id']]=$record; }
   public function isCommitted(string $eventId): bool { return isset($this->events[$eventId]); }
   public function commitEvent(string $eventId): void { if($this->failEvent){$this->failEvent=FALSE;throw new RuntimeException("fixture_crash_before_event_commit");} $this->events[$eventId]=TRUE; }
@@ -157,5 +158,31 @@ $tests['expired_lease_cannot_replace_a_concurrent_checkout_intent']=static funct
  expect($s->records['1']['external_order_id']==='intent_concurrent_winner','concurrent winner remains durable');
  expect(count($t->requests())===1,'no second create after another worker won renewal');
 };
+$tests['late_payment_for_previous_generation_is_noted_once_without_touching_current_payment']=static function():void {
+ // 48-01: the invoice expires, a new generation is issued for the order; the
+ // expired invoice then reports money that arrived after it closed.
+ $s=seeded();
+ $new=['invoice_id'=>'inv_new','payment_url'=>'https://checkout.paymos.io/inv_new','status'=>'awaiting_client'];
+ $t=new MockTransport([response(fixture('expired')),response($new)]);
+ expect((new CheckoutService($s,new TestClients($t)))->start('1','paymos','sandbox')==='https://checkout.paymos.io/inv_new','renewal issued');
+ $current=$s->records['1'];
+ expect($current['invoice_id']==='inv_new' && $current['external_order_id']!=='intent_fixture','current binding is the new generation');
+ expect(isset($current['history']['inv_fixture']),'the replaced binding is kept');
+ $late=fixture('expired');$late['paid_late_at']=1700000000;
+ $t2=new MockTransport([response($late)]);$p=new PaymentProcessor($s,new TestClients($t2),new TestEvents($s));
+ $b=eventBody($late,'invoice.paid_late','evt_late_previous');
+ expect($p->handle($b,signature($b),1700000000)===200,'late notice of the previous generation accepted');
+ expect($s->notes===['paymos_paid_late'] && !$s->payments,'one note, no payment');
+ expect($s->records['1']['invoice_id']==='inv_new' && $s->records['1']['external_order_id']===$current['external_order_id'] && empty($s->records['1']['credited']),'current binding untouched');
+ expect($p->handle($b,signature($b),1700000000)===200 && count($s->notes)===1 && count($t2->requests())===1,'duplicate delivery adds nothing');
+ $b2=eventBody($late,'invoice.paid_late','evt_late_previous_again');
+ expect($p->handle($b2,signature($b2),1700000000)===200 && count($s->notes)===1,'a second late event id for the same invoice adds nothing');
+ $paid=eventBody(fixture('paid'),'invoice.paid','evt_previous_paid');
+ expect($p->handle($paid,signature($paid),1700000000)===409 && !$s->payments,'a closed generation is never credited');
+};
 $failed=0;foreach($tests as $name=>$test){try{$test();echo "PASS $name\n";}catch(Throwable $e){$failed++;echo "FAIL $name: ".get_class($e).' '.$e->getMessage()."\n";}}
-echo count($tests)." isolated service tests; native platform NOT claimed\n";exit($failed?1:0);
+echo count($tests)." isolated service tests; native platform NOT claimed\n";
+// The Connect fixture declares its own Drupal doubles; a separate process keeps them apart.
+passthru(escapeshellarg(PHP_BINARY).' '.escapeshellarg(__DIR__.'/connect-generation.php'),$connectStatus);
+if($connectStatus!==0){$failed++;}
+exit($failed?1:0);
