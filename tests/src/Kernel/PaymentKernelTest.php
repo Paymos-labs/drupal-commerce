@@ -196,16 +196,43 @@ final class PaymentKernelTest extends OrderKernelTestBase {
 
   public function testDatabaseRollbackAfterNativePaymentAndRetry(): void {
     $this->invoices->save($this->record());
+    $before = $this->invoices->load((string) $this->order->id());
     $store = new FailOnceStore($this->invoices);
-    $processor = $this->processor([$this->response($this->invoice()), $this->response($this->invoice())], $store);
-    $this->assertSame(503, $this->deliver($processor, $this->invoice()));
+    $transport = new MockTransport([$this->response($this->invoice()), $this->response($this->invoice())]);
+    $processor = new PaymentProcessor($store, new KernelClients($transport),
+      new EventStore($store, $this->container->get('lock')));
+    $now = time();
+    $body = json_encode(['event_id' => 'evt_fixture', 'event_type' => 'invoice.paid', 'version' => 1,
+      'occurred_at' => $now, 'data' => $this->invoice()], JSON_THROW_ON_ERROR);
+    $signature = 't=' . $now . ',v1=' . hash_hmac('sha256', $now . '.' . $body, 'whsec_fixture');
+
+    // A15-06: unexpected storage exceptions are internal errors, not busy/retry classification.
+    $this->assertSame(500, $processor->handle($body, $signature, $now));
+    $this->assertCount(1, $transport->requests());
     $this->assertSame([], $this->payments());
-    $this->assertFalse($this->reloadEntity($this->order)->isPaid());
+    $rolledBackOrder = $this->reloadEntity($this->order);
+    $this->assertFalse($rolledBackOrder->isPaid());
+    $this->assertSame('draft', $rolledBackOrder->getState()->getId());
+    $this->assertTrue((new Price('0', 'USD'))->equals($rolledBackOrder->getTotalPaid()));
     $this->assertFalse($this->invoices->isCommitted('evt_fixture'));
-    $this->assertFalse($this->invoices->load((string) $this->order->id())['credited']);
-    $this->assertSame(200, $this->deliver($processor, $this->invoice()));
-    $this->assertCount(1, $this->payments());
+    $this->assertSame(0, (int) $this->container->get('database')->select('commerce_paymos_event', 'e')
+      ->condition('event_id', 'evt_fixture')->countQuery()->execute()->fetchField());
+    $this->assertSame($before, $this->invoices->load((string) $this->order->id()), 'Snapshot rolls back with native entities and dedup');
+
+    $this->assertSame(200, $processor->handle($body, $signature, $now));
+    $this->assertCount(2, $transport->requests());
+    $payments = $this->payments();
+    $this->assertCount(1, $payments);
+    $payment = reset($payments);
+    $this->assertSame('completed', $payment->getState()->getId());
     $this->assertTrue($this->reloadEntity($this->order)->isPaid());
+    $this->assertTrue($this->invoices->isCommitted('evt_fixture'));
+    $this->assertTrue($this->invoices->load((string) $this->order->id())['credited']);
+    $this->assertSame('paid', $this->invoices->load((string) $this->order->id())['status']);
+
+    $this->assertSame(200, $processor->handle($body, $signature, $now));
+    $this->assertCount(2, $transport->requests(), 'Committed replay performs no reverse lookup');
+    $this->assertSame(array_keys($payments), array_keys($this->payments()), 'Replay retains exactly the same native payment');
   }
 
   public function testReconciliationAndUninstallGuard(): void {

@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [1.2.4] - 2026-11-13
+
+- fix(plugins): unblock WordPress checks and align native recovery tests
+- chore: rebuild canonical CMS package
+
 ## [1.2.3] - 2026-11-13
 
 - chore: rebuild canonical CMS package
