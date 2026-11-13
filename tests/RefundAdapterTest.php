@@ -35,12 +35,13 @@ final class RefundInvoices implements PaymentStoreInterface {
   public function snapshot(string $id): array { return []; }
   public function load(string $id): ?array { return $this->record; }
   public function save(array $record): void { $this->record = $record; }
+  public function saveHistory(array $record): void {}
   public function isCommitted(string $id): bool { return FALSE; }
   public function commitEvent(string $id): void {}
   public function complete(array $record,array $invoice): void { throw new LogicException('Payment completion must not run'); }
   public function note(string $id,string $code): void {}
   public function pending(int $since,int $limit): array { return []; }
-  public function markChecked(string $id): void {}
+  public function markChecked(string $id, string $invoiceId = ''): void {}
 }
 final class RefundProvider implements TransportInterface {
   public $requests = [];

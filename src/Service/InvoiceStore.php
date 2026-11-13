@@ -80,6 +80,10 @@ final class InvoiceStore implements PaymentStoreInterface {
     if ($invoiceId === '') { return NULL; }
     $data = $this->db->select('commerce_paymos_invoice','i')->fields('i',['data'])
       ->condition('invoice_id',$invoiceId)->execute()->fetchField();
+    if ($data === FALSE) {
+      $data = $this->db->select('commerce_paymos_invoice_history','i')->fields('i',['data'])
+        ->condition('invoice_id',$invoiceId)->execute()->fetchField();
+    }
     return $data === FALSE ? NULL : json_decode($data,TRUE,512,JSON_THROW_ON_ERROR);
   }
 
@@ -107,6 +111,15 @@ final class InvoiceStore implements PaymentStoreInterface {
   public function isCommitted(string $eventId): bool {
     return (bool)$this->db->select('commerce_paymos_event','e')->fields('e',['event_id'])
       ->condition('event_id',$eventId)->execute()->fetchField();
+  }
+
+  public function saveHistory(array $record): void {
+    if (empty($record['invoice_id'])) { throw new \InvalidArgumentException('paymos_history_requires_invoice'); }
+    $this->db->merge('commerce_paymos_invoice_history')->key('invoice_id',$record['invoice_id'])->fields([
+      'order_id'=>$record['order_id'], 'data'=>json_encode($record,JSON_THROW_ON_ERROR),
+      'late_noted'=>empty($record['late_noted'])?0:1, 'status'=>$record['status'],
+      'updated'=>$this->time->getCurrentTime(),
+    ])->execute();
   }
 
   public function commitEvent(string $eventId): void {
@@ -145,15 +158,27 @@ final class InvoiceStore implements PaymentStoreInterface {
   }
 
   public function pending(int $since, int $limit): array {
-    $rows = $this->db->select('commerce_paymos_invoice','i')->fields('i',['data'])
+    $limit = min(50,max(1,$limit));
+    $rows = $this->db->select('commerce_paymos_invoice','i')->fields('i',['data','checked'])
       ->condition('credited',0)->condition('updated',$since,'>=')->orderBy('checked')->orderBy('order_id')
-      ->range(0,min(50,max(1,$limit)))->execute()->fetchCol();
-    return array_map(static fn($row)=>json_decode($row,TRUE,512,JSON_THROW_ON_ERROR),$rows);
+      ->range(0,$limit)->execute()->fetchAll(\PDO::FETCH_ASSOC);
+    $history = $this->db->select('commerce_paymos_invoice_history','i')->fields('i',['data','checked'])
+      ->condition('late_noted',0)->condition('status',['expired','underpaid'],'IN')
+      ->orderBy('checked')->orderBy('invoice_id')->range(0,$limit)->execute()->fetchAll(\PDO::FETCH_ASSOC);
+    $rows = array_merge($rows,$history);
+    usort($rows,static fn($a,$b)=>(int)$a['checked']<=>(int)$b['checked']);
+    return array_map(static fn($row)=>json_decode($row['data'],TRUE,512,JSON_THROW_ON_ERROR),array_slice($rows,0,$limit));
   }
 
-  public function markChecked(string $orderId): void {
+  public function markChecked(string $orderId, string $invoiceId = ''): void {
     // Never write back a stale JSON record over a concurrent callback's credit.
-    $this->db->update('commerce_paymos_invoice')->fields(['checked'=>$this->time->getCurrentTime()])
-      ->condition('order_id',$orderId)->execute();
+    $query = $this->db->update('commerce_paymos_invoice')->fields(['checked'=>$this->time->getCurrentTime()])
+      ->condition('order_id',$orderId);
+    if ($invoiceId !== '') { $query->condition('invoice_id',$invoiceId); }
+    $query->execute();
+    if ($invoiceId !== '') {
+      $this->db->update('commerce_paymos_invoice_history')->fields(['checked'=>$this->time->getCurrentTime()])
+        ->condition('order_id',$orderId)->condition('invoice_id',$invoiceId)->execute();
+    }
   }
 }

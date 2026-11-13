@@ -11,10 +11,11 @@ interface PaymentStoreInterface {
   /** The order record whose `history` holds this replaced invoice's binding, or NULL. */
   public function byPreviousInvoice(string $invoiceId): ?array;
   public function save(array $record): void;
+  public function saveHistory(array $record): void;
   public function isCommitted(string $eventId): bool;
   public function commitEvent(string $eventId): void;
   public function complete(array $record, array $invoice): void;
   public function note(string $orderId, string $code): void;
   public function pending(int $since, int $limit): array;
-  public function markChecked(string $orderId): void;
+  public function markChecked(string $orderId, string $invoiceId = ''): void;
 }

@@ -42,12 +42,13 @@ final class CheckoutService {
       }
       if (!$same || $renew) {
         // No ID after an unknown outcome is NOT permission to mint a new intent.
-        if ($invoiceId === '' || !(new InvoiceReplacement($this->clients->create($record['environment'])))
-          ->close($invoiceId, $record['status'])->isClosed()) {
+        $closed = $invoiceId === '' ? NULL : (new InvoiceReplacement($this->clients->create($record['environment'])))
+          ->close($invoiceId, $record['status']);
+        if ($closed === NULL || !$closed->isClosed()) {
           throw new \RuntimeException('paymos_previous_invoice_unresolved');
         }
         $previousIntent = $record['external_order_id'];
-        $record = $this->store->transaction($orderId, function () use ($orderId, $gatewayId, $environment, $config, $previousIntent, $invoiceId): array {
+        $record = $this->store->transaction($orderId, function () use ($orderId, $gatewayId, $environment, $config, $previousIntent, $invoiceId, $closed): array {
           $current = $this->store->load($orderId);
           if ($current === NULL || $current['external_order_id'] !== $previousIntent
             || ($current['invoice_id'] ?? '') !== $invoiceId || !empty($current['credited'])) {
@@ -57,6 +58,8 @@ final class CheckoutService {
           }
           $snapshot = $this->store->snapshot($orderId);
           $this->assertOrder($snapshot, $gatewayId);
+          $current['status'] = $closed->status();
+          $this->store->saveHistory($current);
           $record = $this->newIntent($snapshot, $environment, $config['project_id']);
           // The closed invoice can still report money that arrived after it
           // closed (invoice.paid_late). Keep its binding so that notice reaches

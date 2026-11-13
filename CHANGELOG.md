@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [1.2.7] - 2026-11-13
+
+- merge: integrate Windows WIP onto origin/main (CMS binding, SDK preview, dashboard, plugins, specs)
+- chore: bundle Paymos PHP SDK v1.10.2
+
 ## [1.2.6] - 2026-11-13
 
 - chore: rebuild canonical CMS package

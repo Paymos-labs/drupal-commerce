@@ -18,7 +18,7 @@ use Paymos\Http\{MockTransport, HttpResponse};
 
 function expect($condition, string $message): void { if (!$condition) { throw new RuntimeException($message); } }
 final class MemoryStore implements PaymentStoreInterface {
-  public array $records = [], $events = [], $payments = [], $notes = [];
+  public array $history = [], $records = [], $events = [], $payments = [], $notes = [];
   public bool $failEvent = FALSE;
   public ?Closure $beforeSecondDurable = NULL;
   private int $durableCalls = 0;
@@ -28,20 +28,21 @@ final class MemoryStore implements PaymentStoreInterface {
     if ($durable && ++$this->durableCalls === 2 && $this->beforeSecondDurable) {
       ($this->beforeSecondDurable)($this);
     }
-    $before=[$this->records,$this->events,$this->payments,$this->notes];
-    try { return $action(); } catch(Throwable $e) { [$this->records,$this->events,$this->payments,$this->notes]=$before;throw $e; }
+    $before=[$this->records,$this->events,$this->payments,$this->notes,$this->history];
+    try { return $action(); } catch(Throwable $e) { [$this->records,$this->events,$this->payments,$this->notes,$this->history]=$before;throw $e; }
   }
   public function snapshot(string $orderId): array { return $this->order; }
   public function load(string $orderId): ?array { return $this->records[$orderId]??NULL; }
-  public function byInvoice(string $invoiceId): ?array { foreach($this->records as $r) { if(($r['invoice_id']??'')===$invoiceId)return $r; } return NULL; }
+  public function byInvoice(string $invoiceId): ?array { foreach($this->records as $r) { if(($r['invoice_id']??'')===$invoiceId)return $r; } return $this->history[$invoiceId]??NULL; }
   public function byPreviousInvoice(string $invoiceId): ?array { foreach($this->records as $r) { if(isset($r['history'][$invoiceId]))return $r; } return NULL; }
   public function save(array $record): void { $this->records[$record['order_id']]=$record; }
+  public function saveHistory(array $record): void { $this->history[$record['invoice_id']]=$record; }
   public function isCommitted(string $eventId): bool { return isset($this->events[$eventId]); }
   public function commitEvent(string $eventId): void { if($this->failEvent){$this->failEvent=FALSE;throw new RuntimeException("fixture_crash_before_event_commit");} $this->events[$eventId]=TRUE; }
   public function complete(array $record,array $invoice): void { $this->payments[]=$record['invoice_id']; }
   public function note(string $orderId,string $code): void { $this->notes[]=$code; }
   public function pending(int $since,int $limit): array { return array_slice(array_values($this->records),0,$limit); }
-  public function markChecked(string $orderId): void {}
+  public function markChecked(string $orderId, string $invoiceId = ''): void {}
 }
 final class TestClients implements ClientFactoryInterface {
   public function __construct(public MockTransport $transport) {}
@@ -91,7 +92,7 @@ $tests['bad_signature_cannot_touch_api_or_credit']=static function():void {
 };
 $tests['changed_amount_is_held_without_credit']=static function():void {
  $s=seeded();$s->order['amount']='101.00';$t=new MockTransport([response(fixture())]);$p=new PaymentProcessor($s,new TestClients($t),new TestEvents($s));$b=eventBody(fixture());
- expect($p->handle($b,signature($b),1700000000)===200,'mismatch recorded');expect(!$s->payments,'mismatch not paid');expect($s->records['1']['review']??FALSE,'manual review');
+ expect($p->handle($b,signature($b),1700000000)===409,'mismatch remains retryable');expect(!$s->payments,'mismatch not paid');expect($s->records['1']['review']??FALSE,'manual review');
 };
 $tests['underpaid_waiting_never_completes']=static function():void {
  $s=seeded();$t=new MockTransport([]);$p=new PaymentProcessor($s,new TestClients($t),new TestEvents($s));$b=eventBody(fixture('underpaid_waiting'),'invoice.underpaid_waiting');
@@ -157,6 +158,54 @@ $tests['expired_lease_cannot_replace_a_concurrent_checkout_intent']=static funct
  catch(\Drupal\commerce_paymos\Service\PaymentBusyException $e){}
  expect($s->records['1']['external_order_id']==='intent_concurrent_winner','concurrent winner remains durable');
  expect(count($t->requests())===1,'no second create after another worker won renewal');
+};
+$tests['review_reconciliation_recovers_including_previously_committed_event']=static function():void {
+ foreach([FALSE,TRUE] as $legacy) {
+  $s=seeded();$s->order['amount']='101';
+  $t=new MockTransport(array_fill(0,8,response(fixture())));
+  $p=new PaymentProcessor($s,new TestClients($t),new TestEvents($s));
+  expect(!$p->reconcile($s->records['1'])&&!$s->payments,'review is not applied');
+  $eventId='reconcile_'.hash('sha256','inv_fixture:invoice.paid');
+  expect(!$s->isCommitted($eventId),'failed review does not commit synthetic event');
+  if($legacy) { $s->events[$eventId]=TRUE; }
+  $s->order['amount']='100';
+  expect($p->reconcile($s->records['1']),'corrected order reconciles');
+  expect($s->payments===['inv_fixture']&&!$s->records['1']['review'],'one native payment clears review');
+  expect($p->reconcile($s->records['1'])&&count($s->payments)===1,'repeat cannot pay twice');
+ }
+};
+$tests['review_webhook_retries_same_event_after_correction']=static function():void {
+ $s=seeded();$s->order['amount']='101';$t=new MockTransport(array_fill(0,3,response(fixture())));
+ $p=new PaymentProcessor($s,new TestClients($t),new TestEvents($s));$body=eventBody(fixture());
+ expect($p->handle($body,signature($body),1700000000)===409,'review requests retry');
+ expect($p->handle($body,signature($body),1700000000)===409&&count($s->notes)===1,'review note not duplicated');
+ $s->order['amount']='100';expect($p->handle($body,signature($body),1700000000)===200,'same event recovers');
+ expect($s->payments===['inv_fixture'],'native payment once');
+};
+$tests['renewal_keeps_old_binding_for_late_callback_and_reconciliation']=static function():void {
+ foreach([FALSE,TRUE] as $reconcile) {
+  $s=seeded();$old=fixture('expired');$new=created();$new['invoice_id']='inv_new';$new['payment_url']='https://checkout.paymos.io/inv_new';
+  $checkout=new CheckoutService($s,new TestClients(new MockTransport([response($old),response($new)])));
+  expect($checkout->start('1','paymos','sandbox')===$new['payment_url'],'checkout renews expired invoice');
+  expect($s->byInvoice('inv_fixture')['external_order_id']==='intent_fixture','historical identity retained');
+  $s->records['1']['credited']=TRUE;$s->order['paid']=TRUE;$s->order['amount']='0';$current=$s->records['1'];
+  $old['paid_late_at']=1700000000;
+  $t=new MockTransport(array_fill(0,4,response($old)));$p=new PaymentProcessor($s,new TestClients($t),new TestEvents($s));
+  if($reconcile) { expect($p->reconcile($s->byInvoice('inv_fixture')),'history reconciles late payment'); }
+  else { $b=eventBody($old,'invoice.paid_late');expect($p->handle($b,signature($b),1700000000)===200,'historical late callback accepted'); }
+  $b=eventBody($old,'invoice.paid_late','evt_second_late');expect($p->handle($b,signature($b),1700000000)===200,'second delivery accepted');
+  expect($s->notes===['paymos_paid_late']&&!$s->payments,'one advisory note and no native payment');
+  expect($s->records['1']===$current,'current paid invoice remains unchanged');
+  expect($s->history['inv_fixture']['late_noted'],'historical note marker persists');
+ }
+};
+$tests['historical_event_requires_api_identity_and_never_applies_payment']=static function():void {
+ $s=seeded();$s->saveHistory($s->records['1']);$s->records['1']['invoice_id']='inv_new';
+ $i=fixture('expired');$i['paid_late_at']=1700000000;$bad=$i;$bad['order']['external_id']='other';
+ $t=new MockTransport([response($bad)]);$p=new PaymentProcessor($s,new TestClients($t),new TestEvents($s));
+ $b=eventBody($i,'invoice.paid_late');expect($p->handle($b,signature($b),1700000000)===409,'historical API mismatch rejected');
+ $b=eventBody(fixture());expect($p->handle($b,signature($b),1700000000)===409,'historical normal payment cannot alter current order');
+ expect(!$s->notes&&!$s->payments,'no mutation from invalid historical evidence');
 };
 $tests['late_payment_for_previous_generation_is_noted_once_without_touching_current_payment']=static function():void {
  // 48-01: the invoice expires, a new generation is issued for the order; the

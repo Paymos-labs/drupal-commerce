@@ -30,7 +30,7 @@ final class PaymentKernelTest extends OrderKernelTestBase {
     parent::setUp();
     $this->installEntitySchema('commerce_payment');
     $this->installConfig('commerce_payment');
-    $this->installSchema('commerce_paymos', ['commerce_paymos_invoice', 'commerce_paymos_event']);
+    $this->installSchema('commerce_paymos', ['commerce_paymos_invoice', 'commerce_paymos_event', 'commerce_paymos_invoice_history']);
     // Preserve the native test request and its session for core teardown.
     $request = $this->container->get('request_stack')->getCurrentRequest();
     $this->assertNotNull($request);
@@ -170,7 +170,7 @@ final class PaymentKernelTest extends OrderKernelTestBase {
     $item->save();
     $this->order->save();
     $processor = $this->processor([$this->response($this->invoice())]);
-    $this->assertSame(200, $this->deliver($processor, $this->invoice(), 'invoice.paid', 'evt_changed'));
+    $this->assertSame(409, $this->deliver($processor, $this->invoice(), 'invoice.paid', 'evt_changed'));
     $this->assertSame([], $this->payments());
     $this->assertTrue($this->invoices->load((string) $this->order->id())['review']);
     $record = $this->record();
@@ -285,6 +285,7 @@ final class FailOnceStore implements PaymentStoreInterface {
   public function byInvoice(string $id): ?array { return $this->inner->byInvoice($id); }
   public function byPreviousInvoice(string $id): ?array { return $this->inner->byPreviousInvoice($id); }
   public function save(array $record): void { $this->inner->save($record); }
+  public function saveHistory(array $record): void { $this->inner->saveHistory($record); }
   public function isCommitted(string $id): bool { return $this->inner->isCommitted($id); }
   public function commitEvent(string $id): void {
     if ($this->fail) { $this->fail = FALSE; throw new \RuntimeException('fixture_failure_before_dedup'); }
@@ -293,5 +294,5 @@ final class FailOnceStore implements PaymentStoreInterface {
   public function complete(array $record, array $invoice): void { $this->inner->complete($record, $invoice); }
   public function note(string $id, string $code): void { $this->inner->note($id, $code); }
   public function pending(int $since, int $limit): array { return $this->inner->pending($since, $limit); }
-  public function markChecked(string $id): void { $this->inner->markChecked($id); }
+  public function markChecked(string $id, string $invoiceId = ''): void { $this->inner->markChecked($id, $invoiceId); }
 }

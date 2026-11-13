@@ -20,7 +20,7 @@ final class Reconciler {
       try {
         // Rotate the queue even for awaiting_client, errors and missing bindings.
         // Older unresolved invoices must not disappear after a day of downtime.
-        $this->store->markChecked($record['order_id']);
+        $this->store->markChecked($record['order_id'], $record['invoice_id'] ?? '');
         $this->processor->reconcile($record);
         $checked++;
       }
