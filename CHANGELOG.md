@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [1.2.8] - 2026-11-14
+
+- chore: rebuild canonical CMS package
+
 ## [1.2.7] - 2026-11-13
 
 - merge: integrate Windows WIP onto origin/main (CMS binding, SDK preview, dashboard, plugins, specs)
