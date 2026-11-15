@@ -234,4 +234,6 @@ echo count($tests)." isolated service tests; native platform NOT claimed\n";
 // The Connect fixture declares its own Drupal doubles; a separate process keeps them apart.
 passthru(escapeshellarg(PHP_BINARY).' '.escapeshellarg(__DIR__.'/connect-generation.php'),$connectStatus);
 if($connectStatus!==0){$failed++;}
+passthru(escapeshellarg(PHP_BINARY).' '.escapeshellarg(__DIR__.'/RefundAdapterTest.php'),$refundStatus);
+if($refundStatus!==0){$failed++;}
 exit($failed?1:0);

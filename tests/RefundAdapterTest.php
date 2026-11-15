@@ -85,7 +85,7 @@ final class RefundProvider implements TransportInterface {
   public function postCount(): int { return count(array_filter($this->requests,static function ($r) { return $r[0] === 'POST'; })); }
 }
 final class RefundClients implements ClientFactoryInterface {
-  public $values = ['project_id'=>'prj_fixture','capabilities'=>['invoice_refunds_v1'],'refunds_enabled'=>TRUE,'webhook_secret'=>'whsec_fixture'];
+  public $values = ['project_id'=>'prj_fixture','capabilities'=>['invoice_refunds_v1'],'refund_contract_version'=>1,'refunds_enabled'=>TRUE,'webhook_secret'=>'whsec_fixture'];
   private $provider;
   public function __construct($provider) { $this->provider = $provider; }
   public function configuration(string $environment): array { return array_replace($this->values,['webhook_secret'=>$environment === 'sandbox' ? 'whsec_fixture' : 'whsec_live']); }
@@ -112,9 +112,17 @@ $refundTests['capability_and_enabled_reject_before_all_http'] = static function 
   $clients->values['capabilities'] = [];
   refundThrows(static function () use ($adapter) { $adapter->request('1','full',refundToken(1)); },'reconnect');
   refundExpect(!$provider->requests && !$adapter->canRefund('1'),'Capability fails closed');
-  $clients->values['capabilities'] = ['invoice_refunds_v1']; $clients->values['refunds_enabled'] = FALSE;
-  refundThrows(static function () use ($adapter) { $adapter->request('1','overpayment',refundToken(1)); },'not_enabled');
-  refundExpect(!$provider->requests,'Disabled new refunds perform no HTTP');
+  $clients->values['capabilities'] = ['invoice_refunds_v1'];
+  foreach ([NULL, 2] as $badContractVersion) {
+    $clients->values['refund_contract_version'] = $badContractVersion;
+    refundThrows(static function () use ($adapter) { $adapter->request('1','full',refundToken(1)); },'reconnect');
+    refundExpect(!$provider->requests && !$adapter->canRefund('1'),'Contract version !== 1 fails closed');
+  }
+  $clients->values['refund_contract_version'] = 1;
+  $clients->values['refunds_enabled'] = FALSE;
+  refundExpect($adapter->canRefund('1'),'Stale refunds_enabled false allows capability-backed UI readiness');
+  $intent = $adapter->request('1','overpayment',refundToken(1));
+  refundExpect($provider->postCount() === 1 && $intent->cashState() === 'created','Stale refunds_enabled false allows new refund POST');
 };
 $refundTests['partial_manual_mapping_and_ambiguous_payments_fail_before_http'] = static function () {
   list($adapter,$store,$provider,$entities) = refundFixture();

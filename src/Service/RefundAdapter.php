@@ -15,16 +15,15 @@ final class RefundAdapter implements NativeRefundProjectorInterface {
   public function __construct(RefundIntentStore $store, RefundNativeGateway $native, ClientFactoryInterface $clients, $installation) {
     $this->store = $store; $this->native = $native; $this->clients = $clients; $this->installation = $installation;
   }
-  private function connection(string $environment, string $project, bool $creating): void {
+  private function connection(string $environment, string $project): void {
     $values = $this->clients->configuration($environment);
-    if ($values['project_id'] !== $project || !CredentialSet::hasCapability($values,'invoice_refunds_v1')) {
+    if (($values['project_id'] ?? null) !== $project || !CredentialSet::hasCapability($values,'invoice_refunds_v1') || ($values['refund_contract_version'] ?? NULL) !== 1) {
       throw new \RuntimeException('refund_reconnect_required');
     }
-    if ($creating && !CredentialSet::refundsEnabled($values)) { throw new \RuntimeException('refunds_not_enabled'); }
   }
   public function canRefund(string $key): bool {
     try {
-      $snapshot = $this->native->snapshot($key); $this->connection($snapshot['environment'],$snapshot['project_id'],TRUE);
+      $snapshot = $this->native->snapshot($key); $this->connection($snapshot['environment'],$snapshot['project_id']);
       $this->native->assertStorage();
       $this->store->assertNoExternalReview($key);
       foreach ($this->store->forPayment($key) as $intent) {
@@ -54,7 +53,7 @@ final class RefundAdapter implements NativeRefundProjectorInterface {
       }
       else {
         $this->native->assertStorage(); $snapshot = $this->native->snapshot($key);
-        $this->connection($snapshot['environment'],$snapshot['project_id'],TRUE);
+        $this->connection($snapshot['environment'],$snapshot['project_id']);
         if ($amount !== NULL && ($mode !== RefundStates::FULL || $amount->getCurrencyCode() !== $snapshot['currency']
           || !\Paymos\Plugin\AmountGuard::amountsEqual($amount->getNumber(),$snapshot['amount']))) { throw new \RuntimeException('refund_partial_not_supported'); }
         $intent = $this->store->createIntent(new RefundIntent([
@@ -64,7 +63,7 @@ final class RefundAdapter implements NativeRefundProjectorInterface {
           'full_draft'=>$mode === RefundStates::FULL ? $snapshot : NULL,
         ]));
       }
-      $this->connection($intent->environment(),$intent->projectId(),$intent->cashState() === RefundStates::NOT_SUBMITTED);
+      $this->connection($intent->environment(),$intent->projectId());
       $state = $this->coordinator($intent)->submit($intent->operationId());
       if ($state !== RefundStates::UNKNOWN) { $this->reconcile($intent->operationId()); }
       return $this->store->getIntent($intent->operationId());
@@ -76,7 +75,7 @@ final class RefundAdapter implements NativeRefundProjectorInterface {
   }
   public function preflight(RefundIntent $intent): ?string {
     try {
-      $this->connection($intent->environment(),$intent->projectId(),TRUE); $this->native->assertStorage();
+      $this->connection($intent->environment(),$intent->projectId()); $this->native->assertStorage();
       if ($this->native->snapshot($intent->paymentKey()) !== $intent->toArray()['native_snapshot']) { return 'refund_native_snapshot_changed'; }
       if ($intent->mode() === RefundStates::FULL && $intent->fullDraft() !== $intent->toArray()['native_snapshot']) { return 'refund_native_draft_conflict'; }
       return NULL;
@@ -92,7 +91,7 @@ final class RefundAdapter implements NativeRefundProjectorInterface {
     $this->store->assertHttpAllowed();
     $intent = $this->store->getIntent($operationId);
     return $this->store->withPaymentLock($intent->paymentKey(),function () use ($operationId) {
-      $intent = $this->store->getIntent($operationId); $this->connection($intent->environment(),$intent->projectId(),FALSE);
+      $intent = $this->store->getIntent($operationId); $this->connection($intent->environment(),$intent->projectId());
       try {
         $action = $this->coordinator($intent)->reconcile($operationId);
         $this->store->transaction(function () use ($operationId) { $this->native->sync($this->store->getIntent($operationId)); });
@@ -125,7 +124,7 @@ final class RefundAdapter implements NativeRefundProjectorInterface {
     $this->store->assertHttpAllowed();
     $key = $this->native->paymentForInvoice($data['invoice_id']);
     $this->store->withPaymentLock($key,function () use ($data,$environment,$key) {
-      $snapshot = $this->native->mapping($key); $this->connection($environment,$snapshot['project_id'],FALSE);
+      $snapshot = $this->native->mapping($key); $this->connection($environment,$snapshot['project_id']);
       if ($snapshot['environment'] !== $environment || $snapshot['project_id'] !== $data['project_id']) { throw new \RuntimeException('refund_callback_scope_conflict'); }
       $client = $this->clients->create($environment);
       $verified = VerifiedRefund::fromApi($client->refunds()->get($data['withdrawal_id']),$client->invoices()->get($data['invoice_id']),new \DateTimeImmutable());
