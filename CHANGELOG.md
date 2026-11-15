@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [1.2.12] - 2026-11-15
+
+- chore: rebuild canonical CMS package
+
 ## [1.2.11] - 2026-11-15
 
 - fix(plugins): guard PHP 8.5 setAccessible deprecations and Drupal SDK path in tests
