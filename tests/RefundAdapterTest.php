@@ -3,10 +3,24 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/stubs/refund.php';
-spl_autoload_register(static function ($class) {
-  foreach (['Paymos\\'=>dirname(__DIR__,2) . '/php-sdk/src/','Drupal\\commerce_paymos\\'=>dirname(__DIR__) . '/src/'] as $prefix => $directory) {
-    if (strpos($class,$prefix) === 0) {
-      $file = $directory . str_replace('\\','/',substr($class,strlen($prefix))) . '.php';
+$root = dirname(__DIR__);
+$sdkEnv = getenv('PAYMOS_SDK_SRC');
+$sdk = NULL;
+foreach (array_filter([
+  $sdkEnv !== FALSE && $sdkEnv !== '' ? rtrim($sdkEnv, '/\\') : NULL,
+  $root . '/vendor/paymos/php-sdk/src',
+  dirname($root) . '/php-sdk/src',
+]) as $candidate) {
+  if (is_dir($candidate)) {
+    $sdk = $candidate;
+    break;
+  }
+}
+$sdk = $sdk ?? (dirname($root) . '/php-sdk/src');
+spl_autoload_register(static function ($class) use ($root, $sdk) {
+  foreach (['Paymos\\' => $sdk . '/', 'Drupal\\commerce_paymos\\' => $root . '/src/'] as $prefix => $directory) {
+    if (strpos($class, $prefix) === 0) {
+      $file = $directory . str_replace('\\', '/', substr($class, strlen($prefix))) . '.php';
       if (is_file($file)) { require_once $file; }
     }
   }
@@ -330,7 +344,9 @@ $refundTests['missing_marker_manual_paid_change_and_nontransactional_driver_fail
 $refundTests['native_gateway_entry_checks_permissions_and_connection_capability'] = static function () {
   list($adapter,$store,$provider,$entities,$clients) = refundFixture();
   $gateway = new \Drupal\commerce_paymos\Plugin\Commerce\PaymentGateway\Paymos();
-  $property = new ReflectionProperty($gateway,'refunds'); $property->setAccessible(TRUE); $property->setValue($gateway,$adapter);
+  $property = new ReflectionProperty($gateway,'refunds');
+  if (\PHP_VERSION_ID < 80100) { $property->setAccessible(TRUE); }
+  $property->setValue($gateway,$adapter);
   $payment = $entities->payments['1']; $payment->gateway = new \PaymosDrupalRefundTest\Gateway($gateway);
   $account = new class {
     public $allowed = FALSE;

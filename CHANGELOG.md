@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [1.2.11] - 2026-11-15
+
+- fix(plugins): guard PHP 8.5 setAccessible deprecations and Drupal SDK path in tests
+
 ## [1.2.10] - 2026-11-15
 
 - fix(refunds): decouple refund RBAC from Withdraw and unify 12 CMS refund adapters

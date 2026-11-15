@@ -1,6 +1,6 @@
 {
   "source_repository": "Paymos-labs/paymos",
   "source_path": "plugins/drupal-commerce-paymos",
-  "source_commit": "f84a4269a6f2fe0dfbbde5f5f47288aaeb34eb8a",
-  "version": "1.2.10"
+  "source_commit": "0ec221536a23a5644dfa22e88ba5a86ec0f2b973",
+  "version": "1.2.11"
 }
