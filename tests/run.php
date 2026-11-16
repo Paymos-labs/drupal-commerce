@@ -229,6 +229,336 @@ $tests['late_payment_for_previous_generation_is_noted_once_without_touching_curr
  $paid=eventBody(fixture('paid'),'invoice.paid','evt_previous_paid');
  expect($p->handle($paid,signature($paid),1700000000)===409 && !$s->payments,'a closed generation is never credited');
 };
+$tests['composer_requires_php_sdk_1_11_0']=static function():void {
+ $composer=json_decode((string)file_get_contents(dirname(__DIR__).'/composer.json'),TRUE,512,JSON_THROW_ON_ERROR);
+ expect(($composer['require']['paymos/php-sdk']??'')==='^1.11.0','composer.json must require paymos/php-sdk ^1.11.0');
+};
+$tests['single_item_with_and_without_optionals_sends_products_and_native_total']=static function():void {
+ $s=new MemoryStore();
+ $s->order['amount']='47.00';
+ $s->order['items']=[
+  ['title'=>'<b>Canvas</b> &middot; Blue','description'=>'<p>Studio &quot;Pro&quot;\\v1<br>Line 2</p>','image_url'=>'https://shop.example/canvas.webp','quantity'=>2,'unit_amount'=>'24.50'],
+ ];
+ $t=new MockTransport([response(created())]);
+ $url=(new CheckoutService($s,new TestClients($t)))->start('1','paymos','sandbox');
+ expect($url==='https://checkout.paymos.io/inv_fixture','single product checkout succeeds');
+ $sent=json_decode($t->requests()[0]['body'],TRUE,512,JSON_THROW_ON_ERROR);
+ expect($sent['amount']==='47.00','native grand total preserved');
+ expect($sent['products']===[[
+  'title'=>'Canvas · Blue',
+  'quantity'=>2,
+  'unit_amount'=>'24.50',
+  'description'=>"Studio \"Pro\"\\v1\nLine 2",
+  'image_url'=>'https://shop.example/canvas.webp',
+ ]],'single item normalized');
+ expect($s->records['1']['products']===$sent['products'],'products persisted in InvoiceStore record');
+
+ $s2=new MemoryStore();
+ $s2->order['amount']='12.00';
+ $s2->order['items']=[
+  ['title'=>'Notebook','description'=>'&nbsp;','image_url'=>'http://shop.example/insecure.png','quantity'=>1,'unit_amount'=>'12.00'],
+ ];
+ $t2=new MockTransport([response(created())]);
+ (new CheckoutService($s2,new TestClients($t2)))->start('1','paymos','sandbox');
+ $sent2=json_decode($t2->requests()[0]['body'],TRUE,512,JSON_THROW_ON_ERROR);
+ expect($sent2['products']===[['title'=>'Notebook','quantity'=>1,'unit_amount'=>'12.00']],'blank description and http image omitted per item');
+};
+$tests['multi_item_cart_excludes_adjustments_and_applies_all_or_nothing_fallback']=static function():void {
+ $s=new MemoryStore();
+ $s->order['amount']='42.50';
+ $s->order['items']=[
+  ['title'=>'Canvas','description'=>'Fine art','image_url'=>'https://shop.example/canvas.webp','quantity'=>2,'unit_amount'=>'15.00'],
+  ['title'=>'Notebook','quantity'=>1,'unit_amount'=>'12.50'],
+  ['title'=>'Shipping','quantity'=>1,'unit_amount'=>'5.00','type'=>'shipping'],
+  ['title'=>'Coupon','quantity'=>1,'unit_amount'=>'-5.00','type'=>'discount'],
+ ];
+ $t=new MockTransport([response(created())]);
+ (new CheckoutService($s,new TestClients($t)))->start('1','paymos','sandbox');
+ $sent=json_decode($t->requests()[0]['body'],TRUE,512,JSON_THROW_ON_ERROR);
+ expect($sent['amount']==='42.50','native grand total preserved on multi-item cart');
+ expect($sent['products']===[
+  ['title'=>'Canvas','quantity'=>2,'unit_amount'=>'15.00','description'=>'Fine art','image_url'=>'https://shop.example/canvas.webp'],
+  ['title'=>'Notebook','quantity'=>1,'unit_amount'=>'12.50'],
+ ],'multi-item cart preserves products and excludes shipping/discount lines');
+
+ // 50 items accepted; 51 items and fractional quantity fall back all-or-nothing to amount-only.
+ $s50=new MemoryStore();
+ $s50->order['amount']='50.00';
+ for($i=1;$i<=50;$i++){$s50->order['items'][]=['title'=>'Item '.$i,'quantity'=>1,'unit_amount'=>'1.00'];}
+ $t50=new MockTransport([response(created())]);
+ (new CheckoutService($s50,new TestClients($t50)))->start('1','paymos','sandbox');
+ $sent50=json_decode($t50->requests()[0]['body'],TRUE,512,JSON_THROW_ON_ERROR);
+ expect(count($sent50['products'])===50,'50 valid items sent');
+
+ foreach(['over50'=>array_merge($s50->order['items'],[['title'=>'Item 51','quantity'=>1,'unit_amount'=>'1.00']]),
+  'fractional'=>[['title'=>'Valid','quantity'=>1,'unit_amount'=>'20.00'],['title'=>'Fabric','quantity'=>1.5,'unit_amount'=>'10.00']]] as $case=>$items){
+  $sf=new MemoryStore();$sf->order['amount']='35.00';$sf->order['items']=$items;
+  $tf=new MockTransport([response(created())]);
+  (new CheckoutService($sf,new TestClients($tf)))->start('1','paymos','sandbox');
+  $sentF=json_decode($tf->requests()[0]['body'],TRUE,512,JSON_THROW_ON_ERROR);
+  expect(!array_key_exists('products',$sentF) && !array_key_exists('products',$sf->records['1']),$case.' falls back all-or-nothing to amount-only');
+ }
+};
+$tests['lost_response_retry_replays_persisted_products_and_supports_legacy_records']=static function():void {
+ $s=new MemoryStore();
+ $s->order['amount']='42.50';
+ $s->order['items']=[
+  ['title'=>'Edition "Alpha" \\ &lt;1&gt;','description'=>"Line 1\nLine 2 — Ω 🚀",'image_url'=>'https://shop.example/alpha.webp','quantity'=>2,'unit_amount'=>'15.00'],
+  ['title'=>'Notebook','quantity'=>1,'unit_amount'=>'12.50'],
+ ];
+ $t=new MockTransport([response(['title'=>'temporary'],503),response(created())]);
+ $c=new CheckoutService($s,new TestClients($t));
+ try{$c->start('1','paymos','sandbox');throw new RuntimeException('Expected API failure');}catch(\Paymos\Exception\ApiException $e){}
+ $persistedProducts=$s->records['1']['products'];
+ expect(count($persistedProducts)===2,'products persisted in record before HTTP');
+
+ // Mutate order items (keeping total 42.50) before retry.
+ $s->order['items']=[['title'=>'Replaced Item','quantity'=>1,'unit_amount'=>'42.50']];
+ $url=$c->start('1','paymos','sandbox');
+ expect($url==='https://checkout.paymos.io/inv_fixture','retry recovers checkout URL');
+ $req1=json_decode($t->requests()[0]['body'],TRUE,512,JSON_THROW_ON_ERROR);
+ $req2=json_decode($t->requests()[1]['body'],TRUE,512,JSON_THROW_ON_ERROR);
+ expect($req1===$req2,'retry sends identical payload despite changed order items');
+ expect($req2['products']===$persistedProducts,'original products[] A preserved across retry');
+ expect($req2['products'][0]['title']==='Edition "Alpha" \\ <1>' && $req2['products'][0]['description']==="Line 1\nLine 2 — Ω 🚀",'special chars and Unicode preserved');
+
+ // Legacy record without products key replays amount-only safely.
+ $legacyStore=new MemoryStore();
+ $legacyStore->save(['order_id'=>'1','gateway_id'=>'paymos','environment'=>'sandbox','project_id'=>'prj_fixture',
+  'external_order_id'=>'intent_legacy','amount'=>'100.00','currency'=>'USD','invoice_id'=>'','payment_url'=>'',
+  'status'=>'','credited'=>FALSE,'late_noted'=>FALSE]);
+ $legacyTransport=new MockTransport([response(created())]);
+ (new CheckoutService($legacyStore,new TestClients($legacyTransport)))->start('1','paymos','sandbox');
+ $legacySent=json_decode($legacyTransport->requests()[0]['body'],TRUE,512,JSON_THROW_ON_ERROR);
+ expect(!array_key_exists('products',$legacySent),'legacy record without products remains amount-only');
+};
+$tests['old_preloaded_sdk_zip_falls_back_to_amount_only']=static function()use($root,$sdk):void {
+ foreach(['missing_class','missing_method'] as $mode){
+  $code='<?php declare(strict_types=1);
+   $root='.var_export($root,TRUE).';
+   $sdk='.var_export($sdk,TRUE).';
+   spl_autoload_register(static function(string $class)use($root,$sdk):void{
+    if($class==="Paymos\\\\Plugin\\\\InvoicePresentation"){
+     if('.var_export($mode,TRUE).'==="missing_method"){eval("namespace Paymos\\\\Plugin; final class InvoicePresentation {}");}
+     return;
+    }
+    foreach(["Paymos\\\\"=>$sdk."/","Drupal\\\\commerce_paymos\\\\"=>$root."/src/"] as $prefix=>$base){
+     if(str_starts_with($class,$prefix)){
+      $file=$base.str_replace("\\\\","/",substr($class,strlen($prefix))).".php";
+      if(is_file($file)){require_once $file;}
+     }
+    }
+   });
+   $store=new class implements \\Drupal\\commerce_paymos\\Service\\PaymentStoreInterface {
+    public array $records=[];
+    public function synchronized(string $id, callable $a){return $a();}
+    public function transaction(string $id, callable $a, bool $d=FALSE){return $a();}
+    public function snapshot(string $id):array{return ["order_id"=>"1","uuid"=>"u","gateway_id"=>"paymos","amount"=>"24.50","currency"=>"USD","paid"=>FALSE,"cancelled"=>FALSE,"items"=>[["title"=>"Studio Pro","quantity"=>1,"unit_amount"=>"24.50"]]];}
+    public function load(string $id):?array{return $this->records[$id]??NULL;}
+    public function byInvoice(string $i):?array{return NULL;}
+    public function byPreviousInvoice(string $i):?array{return NULL;}
+    public function save(array $r):void{$this->records[$r["order_id"]]=$r;}
+    public function saveHistory(array $r):void{}
+    public function isCommitted(string $e):bool{return FALSE;}
+    public function commitEvent(string $e):void{}
+    public function complete(array $r,array $i):void{}
+    public function note(string $o,string $c):void{}
+    public function pending(int $s,int $l):array{return [];}
+    public function markChecked(string $o,string $i=""):void{}
+   };
+   $t=new \\Paymos\\Http\\MockTransport([new \\Paymos\\Http\\HttpResponse(201,json_encode(["invoice_id"=>"inv_zip","payment_url"=>"https://checkout.paymos.io/inv_zip","status"=>"awaiting_client"]),[])]);
+   $clients=new class($t) implements \\Drupal\\commerce_paymos\\Service\\ClientFactoryInterface {
+    public function __construct(private \\Paymos\\Http\\MockTransport $t){}
+    public function configuration(string $e):array{return ["project_id"=>"prj_zip","webhook_secret"=>"whsec"];}
+    public function create(string $e):\\Paymos\\Client{return new \\Paymos\\Client(new \\Paymos\\ClientConfig("pk","sk","https://api.paymos.invalid"),$this->t);}
+   };
+   $url=(new \\Drupal\\commerce_paymos\\Service\\CheckoutService($store,$clients))->start("1","paymos","sandbox");
+   $sent=json_decode($t->requests()[0]["body"],TRUE,512,JSON_THROW_ON_ERROR);
+   if($url!=="https://checkout.paymos.io/inv_zip"||array_key_exists("products",$sent)||array_key_exists("products",$store->records["1"])){exit(2);}
+  ';
+  $proc=proc_open(escapeshellarg(PHP_BINARY),[0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']],$pipes);
+  expect(is_resource($proc),'could not spawn PHP for '.$mode);
+  fwrite($pipes[0],$code);fclose($pipes[0]);
+  $out=stream_get_contents($pipes[1]);fclose($pipes[1]);
+  $err=stream_get_contents($pipes[2]);fclose($pipes[2]);
+  $status=proc_close($proc);
+  expect($status===0,"old ZIP fallback ($mode) failed ($status): $out $err");
+ }
+};
+$tests['invoice_store_snapshot_extracts_items_and_persists_products_json']=static function()use($root,$sdk):void {
+ $code='<?php declare(strict_types=1);
+  $root='.var_export($root,TRUE).';
+  $sdk='.var_export($sdk,TRUE).';
+  spl_autoload_register(static function(string $class)use($root,$sdk):void{
+   foreach(["Paymos\\\\"=>$sdk."/","Drupal\\\\commerce_paymos\\\\"=>$root."/src/"] as $prefix=>$base){
+    if(str_starts_with($class,$prefix)){
+     $file=$base.str_replace("\\\\","/",substr($class,strlen($prefix))).".php";
+     if(is_file($file)){require_once $file;}
+    }
+   }
+  });
+  eval(<<<\'STUBS\'
+  namespace Drupal\Component\Datetime { interface TimeInterface { public function getCurrentTime(): int; } }
+  namespace Drupal\Core\Lock { interface LockBackendInterface { public function acquire($n,$t=30.0); public function release($n); } }
+  namespace Drupal\Core\KeyValueStore { interface KeyValueFactoryInterface {} interface KeyValueStoreInterface {} }
+  namespace Drupal\commerce_payment { interface PaymentOrderUpdaterInterface {} }
+  namespace Drupal\commerce_price { final class Price { public function __construct(private string $n,private string $c){} public function getNumber():string{return $this->n;} public function getCurrencyCode():string{return $this->c;} } }
+  namespace Drupal\commerce_order\Entity { interface OrderInterface {} }
+  namespace Drupal\Core\Entity { interface EntityTypeManagerInterface { public function getStorage($id); } }
+  namespace Drupal\Core\Database { class Connection {} }
+STUBS
+  );
+  $db=new class extends \Drupal\Core\Database\Connection {
+   public array $rows=[];
+   public function inTransaction():bool{return FALSE;}
+   public function startTransaction(){return new class{public function rollBack(){}};}
+   public function select($t,$a=null){
+    $db=$this;
+    return new class($db,$t) {
+     private ?string $orderId=NULL;
+     public function __construct(private $db,private string $t){}
+     public function fields($a,$f){return $this;}
+     public function condition($c,$v){$this->orderId=(string)$v;return $this;}
+     public function forUpdate(){return $this;}
+     public function execute(){
+      $db=$this->db;$t=$this->t;$id=$this->orderId;
+      return new class($db,$t,$id) {
+       public function __construct(private $db,private string $t,private ?string $id){}
+       public function fetchField(){
+        if($this->t==="commerce_order"){return $this->id;}
+        return $this->db->rows[$this->id]["data"]??FALSE;
+       }
+      };
+     }
+    };
+   }
+   public function merge($t){
+    $db=$this;
+    return new class($db) {
+     private string $k="";private array $f=[];
+     public function __construct(private $db){}
+     public function key($c,$v){$this->k=(string)$v;return $this;}
+     public function fields($f){$this->f=$f;return $this;}
+     public function execute(){$this->db->rows[$this->k]=$this->f;}
+    };
+   }
+  };
+  $order=new class implements \Drupal\commerce_order\Entity\OrderInterface {
+   public array $items=[];
+   public string $total="47.00";
+   public function id(){return 1;}
+   public function uuid(){return "order-uuid-1";}
+   public function get($f){return (object)["target_id"=>"paymos"];}
+   public function getBalance(){return new \Drupal\commerce_price\Price($this->total,"USD");}
+   public function isPaid(){return FALSE;}
+   public function getState(){return new class{public function getId(){return "draft";}};}
+   public function getItems(){return $this->items;}
+  };
+  $item1=new class {
+   public function getTitle(){return "Studio Pro";}
+   public function getQuantity(){return "2.00";}
+   public function getUnitPrice(){return new \Drupal\commerce_price\Price("24.50","USD");}
+   public function getPurchasedEntity(){return new class {
+    public function getDescription(){return "Monthly license";}
+    public function getImageUrl(){return "https://shop.example/studio.webp";}
+   };}
+  };
+  $order->items=[$item1];
+  $entities=new class($order) implements \Drupal\Core\Entity\EntityTypeManagerInterface {
+   public function __construct(private $order){}
+   public function getStorage($id){
+    return new class($this->order) {
+     public function __construct(private $order){}
+     public function resetCache($ids){}
+     public function load($id){return $this->order;}
+    };
+   }
+  };
+  $locks=new class implements \Drupal\Core\Lock\LockBackendInterface {
+   public function acquire($n,$t=30.0){return TRUE;}
+   public function release($n){}
+  };
+  $time=new class implements \Drupal\Component\Datetime\TimeInterface {
+   public function getCurrentTime():int{return 1700000000;}
+  };
+  $updater=new class implements \Drupal\commerce_payment\PaymentOrderUpdaterInterface {};
+  $kv=new class implements \Drupal\Core\KeyValueStore\KeyValueFactoryInterface {
+   public function get($c){return new class implements \Drupal\Core\KeyValueStore\KeyValueStoreInterface {
+    public function setIfNotExists($k,$v){return TRUE;}
+   };}
+  };
+  $store=new \Drupal\commerce_paymos\Service\InvoiceStore($db,$entities,$locks,$time,$updater,$kv);
+  $t=new \Paymos\Http\MockTransport([
+   new \Paymos\Http\HttpResponse(503,"{\"title\":\"temp\"}",[]),
+   new \Paymos\Http\HttpResponse(201,json_encode(["invoice_id"=>"inv_1","payment_url"=>"https://checkout.paymos.io/inv_1","status"=>"awaiting_client"]),[]),
+  ]);
+  $clients=new class($t) implements \Drupal\commerce_paymos\Service\ClientFactoryInterface {
+   public function __construct(private $t){}
+   public function configuration(string $e):array{return ["project_id"=>"prj_1","webhook_secret"=>"whsec"];}
+   public function create(string $e):\Paymos\Client{return new \Paymos\Client(new \Paymos\ClientConfig("pk","sk","https://api.paymos.invalid"),$this->t);}
+  };
+  $checkout=new \Drupal\commerce_paymos\Service\CheckoutService($store,$clients);
+  try{$checkout->start("1","paymos","sandbox");exit(2);}catch(\Paymos\Exception\ApiException $e){}
+  $loaded=$store->load("1");
+  if(!is_array($loaded)||!isset($loaded["products"])||count($loaded["products"])!==1||$loaded["products"][0]["quantity"]!==2){exit(3);}
+  // Change order item after lost response; retry must send persisted products from InvoiceStore.
+  $order->items=[new class {
+   public function getTitle(){return "Changed";}
+   public function getQuantity(){return "1.00";}
+   public function getUnitPrice(){return new \Drupal\commerce_price\Price("47.00","USD");}
+  }];
+  $url=$checkout->start("1","paymos","sandbox");
+  $req1=json_decode($t->requests()[0]["body"],TRUE,512,JSON_THROW_ON_ERROR);
+  $req2=json_decode($t->requests()[1]["body"],TRUE,512,JSON_THROW_ON_ERROR);
+  if($url!=="https://checkout.paymos.io/inv_1"||$req1!==$req2||$req2["products"][0]["title"]!=="Studio Pro"){exit(4);}
+
+  // Fractional Drupal quantity "1.50" triggers all-or-nothing amount-only fallback;
+  // bare OrderItem without title (PaymentKernelTest shape) also falls back safely.
+  $db->rows=[];
+  $order->items=[
+   $item1,
+   new class {
+    public function getTitle(){return "Bulk";}
+    public function getQuantity(){return "1.50";}
+    public function getUnitPrice(){return new \Drupal\commerce_price\Price("10.00","USD");}
+   },
+  ];
+  $t2=new \Paymos\Http\MockTransport([
+   new \Paymos\Http\HttpResponse(201,json_encode(["invoice_id"=>"inv_2","payment_url"=>"https://checkout.paymos.io/inv_2","status"=>"awaiting_client"]),[]),
+  ]);
+  (new \Drupal\commerce_paymos\Service\CheckoutService($store,new class($t2) implements \Drupal\commerce_paymos\Service\ClientFactoryInterface {
+   public function __construct(private $t){}
+   public function configuration(string $e):array{return ["project_id"=>"prj_1","webhook_secret"=>"whsec"];}
+   public function create(string $e):\Paymos\Client{return new \Paymos\Client(new \Paymos\ClientConfig("pk","sk","https://api.paymos.invalid"),$this->t);}
+  }))->start("1","paymos","sandbox");
+  $sent2=json_decode($t2->requests()[0]["body"],TRUE,512,JSON_THROW_ON_ERROR);
+  if(array_key_exists("products",$sent2)){exit(5);}
+
+  $db->rows=[];
+  $order->items=[new class {
+   public function getTitle(){return NULL;}
+   public function getQuantity(){return "1.00";}
+   public function getUnitPrice(){return new \Drupal\commerce_price\Price("47.00","USD");}
+  }];
+  $t3=new \Paymos\Http\MockTransport([
+   new \Paymos\Http\HttpResponse(201,json_encode(["invoice_id"=>"inv_3","payment_url"=>"https://checkout.paymos.io/inv_3","status"=>"awaiting_client"]),[]),
+  ]);
+  (new \Drupal\commerce_paymos\Service\CheckoutService($store,new class($t3) implements \Drupal\commerce_paymos\Service\ClientFactoryInterface {
+   public function __construct(private $t){}
+   public function configuration(string $e):array{return ["project_id"=>"prj_1","webhook_secret"=>"whsec"];}
+   public function create(string $e):\Paymos\Client{return new \Paymos\Client(new \Paymos\ClientConfig("pk","sk","https://api.paymos.invalid"),$this->t);}
+  }))->start("1","paymos","sandbox");
+  $sent3=json_decode($t3->requests()[0]["body"],TRUE,512,JSON_THROW_ON_ERROR);
+  if(array_key_exists("products",$sent3)){exit(6);}
+ ';
+ $proc=proc_open(escapeshellarg(PHP_BINARY),[0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']],$pipes);
+ expect(is_resource($proc),'could not spawn PHP for InvoiceStore snapshot test');
+ fwrite($pipes[0],$code);fclose($pipes[0]);
+ $out=stream_get_contents($pipes[1]);fclose($pipes[1]);
+ $err=stream_get_contents($pipes[2]);fclose($pipes[2]);
+ $status=proc_close($proc);
+ expect($status===0,"InvoiceStore snapshot test failed ($status): $out $err");
+};
 $failed=0;foreach($tests as $name=>$test){try{$test();echo "PASS $name\n";}catch(Throwable $e){$failed++;echo "FAIL $name: ".get_class($e).' '.$e->getMessage()."\n";}}
 echo count($tests)." isolated service tests; native platform NOT claimed\n";
 // The Connect fixture declares its own Drupal doubles; a separate process keeps them apart.

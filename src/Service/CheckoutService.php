@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace Drupal\commerce_paymos\Service;
 
 use Paymos\IdempotencyKey;
-use Paymos\Plugin\{AmountGuard, InvoiceReplacement, InvoiceRenewal};
+use Paymos\Plugin\{AmountGuard, InvoicePresentation, InvoiceReplacement, InvoiceRenewal};
 
 /** Native order glue; HTTP signing/retries/replacement rules belong to the SDK. */
 final class CheckoutService {
@@ -74,6 +74,9 @@ final class CheckoutService {
       }
       $payload = ['project_id'=>$record['project_id'], 'external_order_id'=>$record['external_order_id'],
         'amount'=>$record['amount'], 'currency'=>$record['currency']];
+      if (!empty($record['products']) && is_array($record['products'])) {
+        $payload['products'] = $record['products'];
+      }
       $invoice = $this->clients->create($record['environment'])->invoices()->create($payload);
       if (!isset($invoice['invoice_id']) || !is_string($invoice['invoice_id']) || $invoice['invoice_id'] === ''
         || !self::trustedUrl($invoice['payment_url'] ?? NULL)) {
@@ -103,10 +106,33 @@ final class CheckoutService {
   }
 
   private function newIntent(array $order, string $environment, string $project): array {
-    return ['order_id'=>$order['order_id'], 'gateway_id'=>$order['gateway_id'], 'environment'=>$environment,
+    $record = ['order_id'=>$order['order_id'], 'gateway_id'=>$order['gateway_id'], 'environment'=>$environment,
       'project_id'=>$project, 'external_order_id'=>IdempotencyKey::externalOrderId('dc'),
       'amount'=>$order['amount'], 'currency'=>$order['currency'], 'invoice_id'=>'', 'payment_url'=>'',
       'status'=>'', 'credited'=>FALSE, 'late_noted'=>FALSE];
+    $products = self::normalizeOrderProducts($order['items'] ?? NULL);
+    if ($products !== NULL) {
+      $record['products'] = $products;
+    }
+    return $record;
+  }
+
+  private static function normalizeOrderProducts(mixed $items): ?array {
+    if (!is_iterable($items) || !method_exists(InvoicePresentation::class, 'normalizeProducts')) {
+      return NULL;
+    }
+    $candidates = [];
+    foreach ($items as $item) {
+      if (!is_array($item)) {
+        return NULL;
+      }
+      if (isset($item['type']) && is_string($item['type'])
+        && in_array(strtolower(trim($item['type'])), ['shipping', 'discount', 'tax', 'fee', 'note'], TRUE)) {
+        continue;
+      }
+      $candidates[] = $item;
+    }
+    return InvoicePresentation::normalizeProducts($candidates);
   }
 
   /** The fields a replaced invoice's verified event is matched and reverse-verified against. */

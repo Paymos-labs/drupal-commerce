@@ -6,17 +6,19 @@ Accept payments through Paymos in Drupal Commerce. Version `1.0.0` is the first 
 
 Use Drupal `^10.3 || ^11` with Drupal Commerce `^3`. The module declares PHP `^8.1`; your Drupal version may require a newer PHP version, so follow the stricter requirement. Your store needs a public HTTPS address for the connection and payment notifications.
 
-The module uses the GPL-2.0-or-later license. Its PHP SDK dependency uses the MIT license and accepts compatible 1.x versions from 1.9.1 (`^1.9.1`).
+The module uses the GPL-2.0-or-later license. Its PHP SDK dependency (`paymos/php-sdk`) uses the MIT license and requires version `^1.11.0` (`1.11.0` or newer compatible `1.x` release) for checkout `products[]` normalization via `Paymos\Plugin\InvoicePresentation::normalizeProducts`.
 
 ## Install the module
 
-Use Composer to install the stable release and resolve its SDK dependency:
+Use Composer to install the stable release and resolve `paymos/php-sdk:^1.11.0`:
 
 ```sh
 composer require 'drupal/commerce_paymos:^1.0'
 ```
 
-You can also install the manual ZIP package. Extract its `commerce_paymos` directory into your site's contributed modules directory. The manual package includes the PHP SDK, so keep the bundled files together. Enable the Paymos module in Drupal after installing it.
+You can also install the separate manual ZIP package. Extract its `commerce_paymos` directory into your site's contributed modules directory. The manual package bundles `paymos/php-sdk` `1.11.0` inside `vendor/` (`SdkBootstrap` loads it when `Paymos\Client` is not already autoloaded), so keep the bundled files together. Enable the Paymos module in Drupal after installing it.
+
+If a site uses the manual ZIP alongside an older `paymos/php-sdk` already loaded globally by another Composer package, `CheckoutService` checks `method_exists(InvoicePresentation::class, 'normalizeProducts')` and safely falls back to an `amount-only` invoice payload rather than failing checkout.
 
 After updating the module, rebuild Drupal’s cache: `drush --uri=https://your-store.example cache:rebuild`.
 
@@ -26,9 +28,18 @@ Open `/admin/commerce/config/payment/paymos` in Drupal. In the Paymos dashboard,
 
 Then open `/admin/commerce/config/payment-gateways/add`. Create a payment gateway, select Paymos, and choose Sandbox or Live for the environment you intend to use. The connection and the Commerce payment gateway are separate steps; finish both before using the gateway at checkout.
 
-Copy the return addresses shown in Drupal admin into your existing Paymos project: `/paymos/return` for Success URL and `/paymos/return?cancel=1` for Fail URL. Do this once. The hosted checkout uses its Back to store link. Drupal keeps the latest checkout’s native return destinations in the buyer’s browser session for one hour. Another browser, expired session data or a changed order/gateway binding sends the buyer to the store home page. A browser return never confirms payment; verified webhook/API checks and the native Commerce payment determine payment status. Invoice API fields remain unchanged.
+Copy the return addresses shown in Drupal admin into your existing Paymos project: `/paymos/return` for Success URL and `/paymos/return?cancel=1` for Fail URL. Do this once. The hosted checkout uses its Back to store link. Drupal keeps the latest checkout’s native return destinations in the buyer’s browser session for one hour. Another browser, expired session data or a changed order/gateway binding sends the buyer to the store home page. A browser return never confirms payment; verified webhook/API checks and the native Commerce payment determine payment status. Invoice requests send only the order reference, `project_id`, `amount`, `currency`, and optional normalized `products[]` without buyer identity fields.
 
 Credentials stay in encrypted Drupal state. Encryption uses the Drupal private key and `hash_salt`, and secrets do not appear in configuration exports. If your store's canonical URL changes, reconnect the store to Paymos.
+
+## Order line items and catalog boundary
+
+When `Paymos\Plugin\InvoicePresentation::normalizeProducts` is available, `CheckoutService` filters out shipping, discount, tax, fee, and note rows and normalizes `1..50` order line items (`title`, positive integer `quantity`, decimal string `unit_amount`, plus optional plain-text `description` and HTTPS `image_url`) into `products[]` using an all-or-nothing rule: if any product row is invalid or the cart exceeds `50` items, Drupal sends an `amount-only` invoice with the native order total (`amount`) instead of a truncated cart. Missing or non-HTTPS images and blank descriptions are omitted per item without dropping the item, and the normalized `products[]` snapshot is persisted in the durable `InvoiceStore` intent so interrupted-create retries resend the exact same items.
+
+Across the 12-plugin Paymos CMS catalog (`plugins/cms-store-catalog.json`):
+
+- All **11** commodity CMS plugins transmit `products[]`: the **10** PHP plugins built on `Paymos\Plugin\InvoicePresentation::normalizeProducts` (`WooCommerce`, `Easy Digital Downloads`, `Drupal Commerce` on `paymos/php-sdk:^1.11.0`, `OpenCart`, `PrestaShop`, `WHMCS`, `CS-Cart`, `Magento 2`, `Shopware 6`, and `HikaShop` `1.1.0` on `^1.11.0`) plus **Odoo** (`20.0.1.1.0`, sending `products` over the pinned `paymos_sdk-1.6.0-py3-none-any.whl` wheel via `client.request("POST", "/v1/invoices", payload)`).
+- Only the donation gateway **`givewp-paymos`** remains `amount-only`, because donations have no product cart.
 
 ## Keep payment checks running
 

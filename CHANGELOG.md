@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-11-16
+
+- docs(sdk,drupal): document invoice products[] and update OpenAPI snapshot
+- feat(drupal-commerce): add products[] via InvoiceStore and CheckoutService (11.2)
+- chore: bundle Paymos PHP SDK v1.11.0
+- chore: rebuild canonical CMS package
+
 ## [1.2.13] - 2026-11-16
 
 - chore: rebuild canonical CMS package
