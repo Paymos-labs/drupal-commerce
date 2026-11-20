@@ -76,6 +76,10 @@ final class CheckoutService {
         'amount'=>$record['amount'], 'currency'=>$record['currency']];
       if (!empty($record['products']) && is_array($record['products'])) {
         $payload['products'] = $record['products'];
+        // Project only the retired key out of the outgoing copy; keep the durable record frozen.
+        foreach ($payload['products'] as $index => $item) {
+          if (is_array($item)) { unset($payload['products'][$index]['image_url']); }
+        }
       }
       $invoice = $this->clients->create($record['environment'])->invoices()->create($payload);
       if (!isset($invoice['invoice_id']) || !is_string($invoice['invoice_id']) || $invoice['invoice_id'] === ''

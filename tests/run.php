@@ -237,7 +237,7 @@ $tests['single_item_with_and_without_optionals_sends_products_and_native_total']
  $s=new MemoryStore();
  $s->order['amount']='47.00';
  $s->order['items']=[
-  ['title'=>'<b>Canvas</b> &middot; Blue','description'=>'<p>Studio &quot;Pro&quot;\\v1<br>Line 2</p>','image_url'=>'https://shop.example/canvas.webp','quantity'=>2,'unit_amount'=>'24.50'],
+  ['title'=>'<b>Canvas</b> &middot; Blue','description'=>'<p>Studio &quot;Pro&quot;\\v1<br>Line 2</p>','quantity'=>2,'unit_amount'=>'24.50'],
  ];
  $t=new MockTransport([response(created())]);
  $url=(new CheckoutService($s,new TestClients($t)))->start('1','paymos','sandbox');
@@ -249,25 +249,24 @@ $tests['single_item_with_and_without_optionals_sends_products_and_native_total']
   'quantity'=>2,
   'unit_amount'=>'24.50',
   'description'=>"Studio \"Pro\"\\v1\nLine 2",
-  'image_url'=>'https://shop.example/canvas.webp',
  ]],'single item normalized');
  expect($s->records['1']['products']===$sent['products'],'products persisted in InvoiceStore record');
 
  $s2=new MemoryStore();
  $s2->order['amount']='12.00';
  $s2->order['items']=[
-  ['title'=>'Notebook','description'=>'&nbsp;','image_url'=>'http://shop.example/insecure.png','quantity'=>1,'unit_amount'=>'12.00'],
+  ['title'=>'Notebook','description'=>'&nbsp;','quantity'=>1,'unit_amount'=>'12.00'],
  ];
  $t2=new MockTransport([response(created())]);
  (new CheckoutService($s2,new TestClients($t2)))->start('1','paymos','sandbox');
  $sent2=json_decode($t2->requests()[0]['body'],TRUE,512,JSON_THROW_ON_ERROR);
- expect($sent2['products']===[['title'=>'Notebook','quantity'=>1,'unit_amount'=>'12.00']],'blank description and http image omitted per item');
+ expect($sent2['products']===[['title'=>'Notebook','quantity'=>1,'unit_amount'=>'12.00']],'blank description omitted per item');
 };
 $tests['multi_item_cart_excludes_adjustments_and_applies_all_or_nothing_fallback']=static function():void {
  $s=new MemoryStore();
  $s->order['amount']='42.50';
  $s->order['items']=[
-  ['title'=>'Canvas','description'=>'Fine art','image_url'=>'https://shop.example/canvas.webp','quantity'=>2,'unit_amount'=>'15.00'],
+  ['title'=>'Canvas','description'=>'Fine art','quantity'=>2,'unit_amount'=>'15.00'],
   ['title'=>'Notebook','quantity'=>1,'unit_amount'=>'12.50'],
   ['title'=>'Shipping','quantity'=>1,'unit_amount'=>'5.00','type'=>'shipping'],
   ['title'=>'Coupon','quantity'=>1,'unit_amount'=>'-5.00','type'=>'discount'],
@@ -277,7 +276,7 @@ $tests['multi_item_cart_excludes_adjustments_and_applies_all_or_nothing_fallback
  $sent=json_decode($t->requests()[0]['body'],TRUE,512,JSON_THROW_ON_ERROR);
  expect($sent['amount']==='42.50','native grand total preserved on multi-item cart');
  expect($sent['products']===[
-  ['title'=>'Canvas','quantity'=>2,'unit_amount'=>'15.00','description'=>'Fine art','image_url'=>'https://shop.example/canvas.webp'],
+  ['title'=>'Canvas','quantity'=>2,'unit_amount'=>'15.00','description'=>'Fine art'],
   ['title'=>'Notebook','quantity'=>1,'unit_amount'=>'12.50'],
  ],'multi-item cart preserves products and excludes shipping/discount lines');
 
@@ -303,7 +302,7 @@ $tests['lost_response_retry_replays_persisted_products_and_supports_legacy_recor
  $s=new MemoryStore();
  $s->order['amount']='42.50';
  $s->order['items']=[
-  ['title'=>'Edition "Alpha" \\ &lt;1&gt;','description'=>"Line 1\nLine 2 — Ω 🚀",'image_url'=>'https://shop.example/alpha.webp','quantity'=>2,'unit_amount'=>'15.00'],
+  ['title'=>'Edition "Alpha" \\ &lt;1&gt;','description'=>"Line 1\nLine 2 — Ω 🚀",'quantity'=>2,'unit_amount'=>'15.00'],
   ['title'=>'Notebook','quantity'=>1,'unit_amount'=>'12.50'],
  ];
  $t=new MockTransport([response(['title'=>'temporary'],503),response(created())]);
@@ -331,6 +330,32 @@ $tests['lost_response_retry_replays_persisted_products_and_supports_legacy_recor
  (new CheckoutService($legacyStore,new TestClients($legacyTransport)))->start('1','paymos','sandbox');
  $legacySent=json_decode($legacyTransport->requests()[0]['body'],TRUE,512,JSON_THROW_ON_ERROR);
  expect(!array_key_exists('products',$legacySent),'legacy record without products remains amount-only');
+};
+$tests['historical_record_retry_removes_only_image_key_without_rewriting_record']=static function():void {
+ $s=new MemoryStore();
+ $historical=[
+  ['title'=>'  <b>Frozen original</b>  ','description'=>"  Line 1\nLine 2 — Ω 🚀  ",'image_url'=>'https://shop.example/legacy.webp','quantity'=>2,'unit_amount'=>'12345678901234567890.123456789012345678'],
+  ['title'=>'Support','quantity'=>1,'unit_amount'=>'0.00','image_url'=>NULL],
+ ];
+ $record=['order_id'=>'1','gateway_id'=>'paymos','environment'=>'sandbox','project_id'=>'prj_fixture',
+  'external_order_id'=>'intent_historical','amount'=>'100.00','currency'=>'USD','invoice_id'=>'','payment_url'=>'',
+  'status'=>'','credited'=>FALSE,'late_noted'=>FALSE,'products'=>$historical,
+  'history'=>['inv_previous'=>['external_order_id'=>'intent_previous','products'=>$historical]]];
+ $s->save($record);
+ $recordBytes=serialize($record);
+ $s->order['items']=[['title'=>'Changed native item','quantity'=>1,'unit_amount'=>'100.00']];
+ $t=new MockTransport([response(['title'=>'temporary'],503)]);
+ try{(new CheckoutService($s,new TestClients($t)))->start('1','paymos','sandbox');throw new LogicException('Expected API failure');}catch(\Paymos\Exception\ApiException $e){}
+ $expectedProducts=$historical;
+ unset($expectedProducts[0]['image_url'],$expectedProducts[1]['image_url']);
+ $outbound=json_decode($t->requests()[0]['body'],TRUE,512,JSON_THROW_ON_ERROR);
+ expect($outbound===['project_id'=>'prj_fixture','external_order_id'=>'intent_historical','amount'=>'100.00','currency'=>'USD','products'=>$expectedProducts],'retry projects exactly one retired key and retains all frozen values and identity');
+ expect(serialize($s->records['1'])===$recordBytes,'retry must not rewrite record.products, prior history or any stored snapshot value');
+
+ $s->order['amount']='101.00';
+ $blocked=new MockTransport([]);
+ try{(new CheckoutService($s,new TestClients($blocked)))->start('1','paymos','sandbox');throw new LogicException('Changed money must be blocked');}catch(RuntimeException $e){}
+ expect(!$blocked->requests() && serialize($s->records['1'])===$recordBytes,'legacy media compatibility cannot bypass money guards or create a replacement');
 };
 $tests['old_preloaded_sdk_zip_falls_back_to_amount_only']=static function()use($root,$sdk):void {
  foreach(['missing_class','missing_method'] as $mode){
@@ -460,7 +485,6 @@ STUBS
    public function getUnitPrice(){return new \Drupal\commerce_price\Price("24.50","USD");}
    public function getPurchasedEntity(){return new class {
     public function getDescription(){return "Monthly license";}
-    public function getImageUrl(){return "https://shop.example/studio.webp";}
    };}
   };
   $order->items=[$item1];
@@ -550,6 +574,74 @@ STUBS
   }))->start("1","paymos","sandbox");
   $sent3=json_decode($t3->requests()[0]["body"],TRUE,512,JSON_THROW_ON_ERROR);
   if(array_key_exists("products",$sent3)){exit(6);}
+
+  // A product with an unreadable price invalidates the whole cart in either order.
+  // Use the real InvoiceStore snapshot and CheckoutService, not MemoryStore candidates.
+  $missingPriceItems=[
+   "missing_getUnitPrice"=>new class {
+    public function getTitle(){return "Missing price method";}
+    public function getQuantity(){return "1.00";}
+   },
+   "null_price"=>new class {
+    public function getTitle(){return "NULL price";}
+    public function getQuantity(){return "1.00";}
+    public function getUnitPrice(){return NULL;}
+   },
+   "scalar_price"=>new class {
+    public function getTitle(){return "Scalar price";}
+    public function getQuantity(){return "1.00";}
+    public function getUnitPrice(){return "10.00";}
+   },
+   "missing_getNumber"=>new class {
+    public function getTitle(){return "Unreadable price object";}
+    public function getQuantity(){return "1.00";}
+    public function getUnitPrice(){return new class {
+     public function getCurrencyCode(){return "USD";}
+    };}
+   },
+  ];
+  $missingPriceFailures=[];
+  foreach($missingPriceItems as $priceCase=>$invalidItem){
+   foreach(["valid_first","invalid_first"] as $position){
+    $case=$priceCase."_".$position;
+    $db->rows=[];
+    $order->total="47.00";
+    $order->items=$position==="valid_first"?[$item1,$invalidItem]:[$invalidItem,$item1];
+    $invoiceId="inv_".$case;
+    $paymentUrl="https://checkout.paymos.io/".$invoiceId;
+    $transport=new \Paymos\Http\MockTransport([
+     new \Paymos\Http\HttpResponse(201,json_encode(["invoice_id"=>$invoiceId,"payment_url"=>$paymentUrl,"status"=>"awaiting_client"]),[]),
+    ]);
+    $caseClients=new class($transport) implements \Drupal\commerce_paymos\Service\ClientFactoryInterface {
+     public function __construct(private $transport){}
+     public function configuration(string $e):array{return ["project_id"=>"prj_1","webhook_secret"=>"whsec"];}
+     public function create(string $e):\Paymos\Client{return new \Paymos\Client(new \Paymos\ClientConfig("pk","sk","https://api.paymos.invalid"),$this->transport);}
+    };
+    $caseUrl=(new \Drupal\commerce_paymos\Service\CheckoutService($store,$caseClients))->start("1","paymos","sandbox");
+    $requests=$transport->requests();
+    if(count($requests)!==1||$requests[0]["method"]!=="POST"||$requests[0]["url"]!=="https://api.paymos.invalid/v1/invoices"){
+     throw new \RuntimeException($case.": expected exactly one fresh invoice create and no replacement request");
+    }
+    $sent=json_decode($requests[0]["body"],TRUE,512,JSON_THROW_ON_ERROR);
+    $record=$store->load("1");
+    if(!is_array($record)||!is_string($record["external_order_id"]??NULL)||$record["external_order_id"]===""){
+     throw new \RuntimeException($case.": missing durable invoice intent");
+    }
+    if(array_key_exists("products",$sent)||array_key_exists("products",$record)){
+     $missingPriceFailures[]=$case.": unreadable product price must omit the entire products array from request and record";
+    }
+    $sentIdentity=$sent;unset($sentIdentity["products"]);
+    $recordIdentity=$record;unset($recordIdentity["products"]);
+    if($sentIdentity!==["project_id"=>"prj_1","external_order_id"=>$record["external_order_id"],"amount"=>"47.00","currency"=>"USD"]
+     ||$recordIdentity!==["order_id"=>"1","gateway_id"=>"paymos","environment"=>"sandbox","project_id"=>"prj_1",
+      "external_order_id"=>$record["external_order_id"],"amount"=>"47.00","currency"=>"USD","invoice_id"=>$invoiceId,
+      "payment_url"=>$paymentUrl,"status"=>"awaiting_client","credited"=>FALSE,"late_noted"=>FALSE]
+     ||count($db->rows)!==1||$caseUrl!==$paymentUrl){
+     throw new \RuntimeException($case.": native financial values or durable invoice identity changed");
+    }
+   }
+  }
+  if($missingPriceFailures){throw new \RuntimeException(implode("\n",$missingPriceFailures));}
  ';
  $proc=proc_open(escapeshellarg(PHP_BINARY),[0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']],$pipes);
  expect(is_resource($proc),'could not spawn PHP for InvoiceStore snapshot test');

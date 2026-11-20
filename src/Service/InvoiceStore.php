@@ -68,9 +68,15 @@ final class InvoiceStore implements PaymentStoreInterface {
     if (method_exists($order, 'getItems')) {
       $orderCurrency = $balance->getCurrencyCode();
       foreach ($order->getItems() as $item) {
-        if (!is_object($item) || !method_exists($item, 'getUnitPrice')) { continue; }
+        if (!is_object($item) || !method_exists($item, 'getUnitPrice')) {
+          $items[] = ['title' => NULL, 'quantity' => NULL, 'unit_amount' => NULL];
+          continue;
+        }
         $unitPrice = $item->getUnitPrice();
-        if ($unitPrice === NULL || !is_object($unitPrice) || !method_exists($unitPrice, 'getNumber')) { continue; }
+        if ($unitPrice === NULL || !is_object($unitPrice) || !method_exists($unitPrice, 'getNumber')) {
+          $items[] = ['title' => NULL, 'quantity' => NULL, 'unit_amount' => NULL];
+          continue;
+        }
         if (method_exists($unitPrice, 'getCurrencyCode') && $unitPrice->getCurrencyCode() !== $orderCurrency) {
           $items[] = ['title' => NULL, 'quantity' => NULL, 'unit_amount' => NULL];
           continue;
@@ -87,8 +93,6 @@ final class InvoiceStore implements PaymentStoreInterface {
             $product = method_exists($purchased, 'getProduct') ? $purchased->getProduct() : NULL;
             $description = self::extractItemDescription($purchased, is_object($product) ? $product : NULL);
             if ($description !== NULL) { $entry['description'] = $description; }
-            $imageUrl = self::extractItemImageUrl($purchased, is_object($product) ? $product : NULL);
-            if ($imageUrl !== NULL) { $entry['image_url'] = $imageUrl; }
           }
         }
         $items[] = $entry;
@@ -132,27 +136,6 @@ final class InvoiceStore implements PaymentStoreInterface {
           if (trim($summary) !== '') { return $summary; }
           $value = isset($field->value) && is_string($field->value) ? $field->value : '';
           if (trim($value) !== '') { return $value; }
-        }
-      }
-    }
-    return NULL;
-  }
-
-  private static function extractItemImageUrl(object $purchased, ?object $product): ?string {
-    foreach ([$purchased, $product] as $entity) {
-      if ($entity === NULL) { continue; }
-      if (method_exists($entity, 'getImageUrl')) {
-        $url = $entity->getImageUrl();
-        if (is_string($url) && $url !== '') { return $url; }
-      }
-      if (method_exists($entity, 'hasField')) {
-        foreach (['field_images', 'field_image', 'images', 'image'] as $fieldName) {
-          if (!$entity->hasField($fieldName) || $entity->get($fieldName)->isEmpty()) { continue; }
-          $file = $entity->get($fieldName)->entity ?? NULL;
-          if (is_object($file) && method_exists($file, 'createFileUrl')) {
-            $url = $file->createFileUrl(FALSE);
-            if (is_string($url) && $url !== '') { return $url; }
-          }
         }
       }
     }
