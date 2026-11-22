@@ -38,7 +38,7 @@ When `Paymos\Plugin\InvoicePresentation::normalizeProducts` is available, `Check
 
 Across the 12-plugin Paymos CMS catalog (`plugins/cms-store-catalog.json`):
 
-- All **11** commodity CMS plugins transmit `products[]`: the **10** PHP plugins built on `Paymos\Plugin\InvoicePresentation::normalizeProducts` (`WooCommerce`, `Easy Digital Downloads`, `Drupal Commerce` on `paymos/php-sdk:^1.11.0`, `OpenCart`, `PrestaShop`, `WHMCS`, `CS-Cart`, `Magento 2`, `Shopware 6`, and `HikaShop` `1.1.0` on `^1.11.0`) plus **Odoo** (`20.0.1.1.0`, sending `products` over the pinned `paymos_sdk-1.6.0-py3-none-any.whl` wheel via `client.request("POST", "/v1/invoices", payload)`).
+- All **11** commodity CMS plugins transmit `products[]`: the **10** PHP plugins built on `Paymos\Plugin\InvoicePresentation::normalizeProducts` (`WooCommerce`, `Easy Digital Downloads`, `Drupal Commerce` on `paymos/php-sdk:^1.11.0`, `OpenCart`, `PrestaShop`, `WHMCS`, `CS-Cart`, `Magento 2`, `Shopware 6`, and `HikaShop` `1.1.0` on `^1.11.0`) plus **Odoo** (`20.0.1.1.0`, sending `products` over the bundled Paymos Python SDK `1.x` (`>= 1.6.0`) via `client.request("POST", "/v1/invoices", payload)`).
 - Only the donation gateway **`givewp-paymos`** remains `amount-only`, because donations have no product cart.
 
 ## Keep payment checks running
