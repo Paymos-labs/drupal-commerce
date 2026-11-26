@@ -1,6 +1,11 @@
 # Paymos for Drupal Commerce
 
+**English** | [简体中文](README.zh-CN.md) | [Русский](README.ru.md) | [Español](README.es.md) | [Deutsch](README.de.md) | [Türkçe](README.tr.md)
+
 Accept payments through Paymos in Drupal Commerce. Version `1.0.0` is the first stable release, available through [Drupal.org](https://www.drupal.org/project/commerce_paymos) and the [official GitHub repository](https://github.com/Paymos-labs/drupal-commerce).
+
+[![Watch: 12 Official CMS Crypto Plugins — 1-Click Connect (Paymos)](https://i.ytimg.com/vi/VMLUGVumYkg/maxresdefault.jpg)](https://www.youtube.com/watch?v=VMLUGVumYkg)
+> **Video walkthrough (1:12, subtitles in 6 languages):** [Watch on YouTube](https://www.youtube.com/watch?v=VMLUGVumYkg)
 
 ## Requirements
 
