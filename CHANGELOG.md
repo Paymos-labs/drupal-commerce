@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [1.3.8] - 2026-11-27
+
+- chore: rebuild canonical CMS package
+
 ## [1.3.7] - 2026-11-26
 
 - docs(plugins): add 6-language READMEs (EN/zh-CN/ru/es/de/tr) and YouTube walkthrough previews across all 25 Paymos-labs repos
