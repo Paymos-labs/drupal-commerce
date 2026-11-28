@@ -11,11 +11,11 @@ Akzeptieren Sie Zahlungen über Paymos in Drupal Commerce. Version `1.0.0` ist d
 
 Verwenden Sie Drupal `^10.3 || ^11` mit Drupal Commerce `^3`. Das Modul deklariert PHP `^8.1`; Ihre Drupal-Version verlangt möglicherweise eine neuere PHP-Version — richten Sie sich nach der strengeren Vorgabe. Ihr Shop benötigt eine öffentlich erreichbare HTTPS-Adresse für die Verbindung und Zahlungsbenachrichtigungen.
 
-Das Modul steht unter der Lizenz GPL-2.0-or-later. Seine PHP-SDK-Abhängigkeit (`paymos/php-sdk`) steht unter der MIT-Lizenz und erfordert Version `^1.11.0` (`1.11.0` oder ein neueres kompatibles `1.x`-Release) für die Normalisierung von `products[]` im Checkout über `Paymos\Plugin\InvoicePresentation::normalizeProducts`.
+Das Modul steht unter der Lizenz GPL-2.0-or-later. Seine PHP-SDK-Abhängigkeit (`paymos/php-sdk`) steht unter der MIT-Lizenz und erfordert Version `^1.12.0` (`1.12.0` oder ein neueres kompatibles `1.x`-Release) für die Normalisierung von `products[]` im Checkout über `Paymos\Plugin\InvoicePresentation::normalizeProducts`.
 
 ## Modul installieren
 
-Installieren Sie das stabile Release über Composer, um `paymos/php-sdk:^1.11.0` aufzulösen:
+Installieren Sie das stabile Release über Composer, um `paymos/php-sdk:^1.12.0` aufzulösen:
 
 ```sh
 composer require 'drupal/commerce_paymos:^1.0'
@@ -43,7 +43,7 @@ Wenn `Paymos\Plugin\InvoicePresentation::normalizeProducts` verfügbar ist, filt
 
 Im gesamten 12-Plugin-CMS-Katalog von Paymos (`plugins/cms-store-catalog.json`):
 
-- Alle **11** Warenkorb-CMS-Plugins übermitteln `products[]`: die **10** PHP-Plugins auf Basis von `Paymos\Plugin\InvoicePresentation::normalizeProducts` (`WooCommerce`, `Easy Digital Downloads`, `Drupal Commerce` mit `paymos/php-sdk:^1.11.0`, `OpenCart`, `PrestaShop`, `WHMCS`, `CS-Cart`, `Magento 2`, `Shopware 6` sowie `HikaShop` `1.1.0` mit `^1.11.0`) sowie **Odoo** (`20.0.1.1.0`, das `products` über das mitgelieferte Paymos Python SDK `1.x` (`>= 1.6.0`) per `client.request("POST", "/v1/invoices", payload)` sendet).
+- Alle **11** Warenkorb-CMS-Plugins übermitteln `products[]`: die **10** PHP-Plugins auf Basis von `Paymos\Plugin\InvoicePresentation::normalizeProducts` (`WooCommerce`, `Easy Digital Downloads`, `Drupal Commerce` mit `paymos/php-sdk:^1.12.0`, `OpenCart`, `PrestaShop`, `WHMCS`, `CS-Cart`, `Magento 2`, `Shopware 6` sowie `HikaShop` `1.1.0` mit `^1.11.0`) sowie **Odoo** (`20.0.1.1.0`, das `products` über das mitgelieferte Paymos Python SDK `1.x` (`>= 1.6.0`) per `client.request("POST", "/v1/invoices", payload)` sendet).
 - Lediglich das Spenden-Gateway **`givewp-paymos`** bleibt bei `amount-only`, da Spenden keinen Produktwarenkorb haben.
 
 ## Zahlungsprüfungen aktiv halten

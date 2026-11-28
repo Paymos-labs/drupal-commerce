@@ -63,6 +63,7 @@ final class RefundProvider implements TransportInterface {
   public $timeout = FALSE;
   public $status = 'created';
   public $corrupt = [];
+  public $readFailures = [];
   private $db;
   public function __construct($db) { $this->db = $db; }
   public function request($method,$url,array $headers,$body,$timeoutSeconds) {
@@ -88,6 +89,7 @@ final class RefundProvider implements TransportInterface {
     if (strpos($url,'/v1/invoices/') !== FALSE) {
       return new HttpResponse(200,json_encode(['invoice_id'=>'inv_fixture','project_id'=>'prj_fixture','is_test'=>TRUE,'status'=>'paid_over']),[]);
     }
+    if ($this->readFailures) { $s = (int) array_shift($this->readFailures); return new HttpResponse($s, json_encode(['type'=>'x','title'=>'x','status'=>$s,'detail'=>'x','code'=>'refund_not_found']), ['content-type'=>'application/problem+json']); }
     foreach ($this->refunds as $refund) {
       if (substr($url,-strlen($refund['withdrawal_id'])) === $refund['withdrawal_id']) {
         return new HttpResponse(200,json_encode($this->corrupt + $refund),[]);
@@ -120,6 +122,18 @@ $refundTests['ton_raw_pin_accepts_friendly_same_account_and_rejects_another'] = 
   require_once __DIR__ . '/CmsTonPinContract.php';
   list($adapter, $store) = refundFixture();
   paymos_cms_ton_pin_contract($store, 'drupal', 'fixture-installation', '1');
+};
+$refundTests['accepted_refund_survives_a_temporary_reverse_read_failure'] = static function () {
+  foreach ([401,403,404] as $st) {
+    list($adapter,$store,$provider) = refundFixture();
+    $provider->readFailures = [$st];
+    $over = $adapter->request('1','overpayment',refundToken(1));
+    $provider->setStatus('wd_1','completed');
+    $adapter->reconcile($over->operationId());
+    $after = $store->getIntent($over->operationId());
+    refundExpect($after->withdrawalId() === 'wd_1', $st . ': bound after the read recovers, got ' . var_export($after->withdrawalId(), true));
+    refundExpect($after->projectionState() === 'applied', $st . ': projected');
+  }
 };
 $refundTests['capability_and_enabled_reject_before_all_http'] = static function () {
   list($adapter,$store,$provider,$entities,$clients) = refundFixture();

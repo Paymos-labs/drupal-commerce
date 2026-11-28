@@ -11,11 +11,11 @@
 
 使用 Drupal `^10.3 || ^11` 与 Drupal Commerce `^3`。本模块声明要求 PHP `^8.1`；您所使用的 Drupal 版本可能需要更高的 PHP 版本，请以更严格的要求为准。您的店铺需要一个可公网访问的 HTTPS 地址，以完成一键连接并接收支付通知。
 
-本模块采用 GPL-2.0-or-later 开源协议。其 PHP SDK 依赖（`paymos/php-sdk`）采用 MIT 协议，并要求 `^1.11.0` 版本（`1.11.0` 或更新的兼容 `1.x` 版本），以支持通过 `Paymos\Plugin\InvoicePresentation::normalizeProducts` 规范化结账时的 `products[]` 商品明细。
+本模块采用 GPL-2.0-or-later 开源协议。其 PHP SDK 依赖（`paymos/php-sdk`）采用 MIT 协议，并要求 `^1.12.0` 版本（`1.12.0` 或更新的兼容 `1.x` 版本），以支持通过 `Paymos\Plugin\InvoicePresentation::normalizeProducts` 规范化结账时的 `products[]` 商品明细。
 
 ## 安装模块
 
-使用 Composer 安装稳定版并自动解析 `paymos/php-sdk:^1.11.0`：
+使用 Composer 安装稳定版并自动解析 `paymos/php-sdk:^1.12.0`：
 
 ```sh
 composer require 'drupal/commerce_paymos:^1.0'
@@ -43,7 +43,7 @@ composer require 'drupal/commerce_paymos:^1.0'
 
 在 Paymos 官方 12 款 CMS 插件目录（`plugins/cms-store-catalog.json`）中：
 
-- 全部 **11** 款商品交易类 CMS 插件均传输 `products[]`：包括基于 `Paymos\Plugin\InvoicePresentation::normalizeProducts` 构建的 **10** 款 PHP 插件（`WooCommerce`、`Easy Digital Downloads`、基于 `paymos/php-sdk:^1.11.0` 的 `Drupal Commerce`、`OpenCart`、`PrestaShop`、`WHMCS`、`CS-Cart`、`Magento 2`、`Shopware 6` 以及基于 `^1.11.0` 的 `HikaShop` `1.1.0`），外加 **Odoo**（`20.0.1.1.0`，通过内置 Paymos Python SDK `1.x`（`>= 1.6.0`）的 `client.request("POST", "/v1/invoices", payload)` 发送 `products`）。
+- 全部 **11** 款商品交易类 CMS 插件均传输 `products[]`：包括基于 `Paymos\Plugin\InvoicePresentation::normalizeProducts` 构建的 **10** 款 PHP 插件（`WooCommerce`、`Easy Digital Downloads`、基于 `paymos/php-sdk:^1.12.0` 的 `Drupal Commerce`、`OpenCart`、`PrestaShop`、`WHMCS`、`CS-Cart`、`Magento 2`、`Shopware 6` 以及基于 `^1.11.0` 的 `HikaShop` `1.1.0`），外加 **Odoo**（`20.0.1.1.0`，通过内置 Paymos Python SDK `1.x`（`>= 1.6.0`）的 `client.request("POST", "/v1/invoices", payload)` 发送 `products`）。
 - 仅捐赠网关 **`givewp-paymos`** 保持 `amount-only`，因为捐赠场景不存在商品购物车。
 
 ## 保持支付定时检查运行

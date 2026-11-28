@@ -11,11 +11,11 @@ Acepte pagos a través de Paymos en Drupal Commerce. La versión `1.0.0` es el p
 
 Utilice Drupal `^10.3 || ^11` con Drupal Commerce `^3`. El módulo declara PHP `^8.1`; su versión de Drupal puede requerir una versión de PHP más reciente, así que aplique el requisito más estricto. Su tienda necesita una dirección HTTPS pública para la conexión y las notificaciones de pago.
 
-El módulo utiliza la licencia GPL-2.0-or-later. Su dependencia del SDK de PHP (`paymos/php-sdk`) utiliza la licencia MIT y requiere la versión `^1.11.0` (`1.11.0` o una versión compatible más reciente de `1.x`) para normalizar `products[]` en el checkout mediante `Paymos\Plugin\InvoicePresentation::normalizeProducts`.
+El módulo utiliza la licencia GPL-2.0-or-later. Su dependencia del SDK de PHP (`paymos/php-sdk`) utiliza la licencia MIT y requiere la versión `^1.12.0` (`1.12.0` o una versión compatible más reciente de `1.x`) para normalizar `products[]` en el checkout mediante `Paymos\Plugin\InvoicePresentation::normalizeProducts`.
 
 ## Instalar el módulo
 
-Utilice Composer para instalar la versión estable y resolver `paymos/php-sdk:^1.11.0`:
+Utilice Composer para instalar la versión estable y resolver `paymos/php-sdk:^1.12.0`:
 
 ```sh
 composer require 'drupal/commerce_paymos:^1.0'
@@ -43,7 +43,7 @@ Cuando `Paymos\Plugin\InvoicePresentation::normalizeProducts` está disponible, 
 
 En todo el catálogo de 12 plugins CMS de Paymos (`plugins/cms-store-catalog.json`):
 
-- Los **11** plugins CMS de comercio transmiten `products[]`: los **10** plugins PHP basados en `Paymos\Plugin\InvoicePresentation::normalizeProducts` (`WooCommerce`, `Easy Digital Downloads`, `Drupal Commerce` con `paymos/php-sdk:^1.11.0`, `OpenCart`, `PrestaShop`, `WHMCS`, `CS-Cart`, `Magento 2`, `Shopware 6` y `HikaShop` `1.1.0` con `^1.11.0`) además de **Odoo** (`20.0.1.1.0`, que envía `products` mediante el SDK de Python de Paymos incluido `1.x` (`>= 1.6.0`) a través de `client.request("POST", "/v1/invoices", payload)`).
+- Los **11** plugins CMS de comercio transmiten `products[]`: los **10** plugins PHP basados en `Paymos\Plugin\InvoicePresentation::normalizeProducts` (`WooCommerce`, `Easy Digital Downloads`, `Drupal Commerce` con `paymos/php-sdk:^1.12.0`, `OpenCart`, `PrestaShop`, `WHMCS`, `CS-Cart`, `Magento 2`, `Shopware 6` y `HikaShop` `1.1.0` con `^1.11.0`) además de **Odoo** (`20.0.1.1.0`, que envía `products` mediante el SDK de Python de Paymos incluido `1.x` (`>= 1.6.0`) a través de `client.request("POST", "/v1/invoices", payload)`).
 - Únicamente la pasarela de donaciones **`givewp-paymos`** permanece como `amount-only`, porque las donaciones no tienen carrito de productos.
 
 ## Mantener activas las comprobaciones de pago

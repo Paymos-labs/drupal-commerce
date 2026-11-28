@@ -229,9 +229,9 @@ $tests['late_payment_for_previous_generation_is_noted_once_without_touching_curr
  $paid=eventBody(fixture('paid'),'invoice.paid','evt_previous_paid');
  expect($p->handle($paid,signature($paid),1700000000)===409 && !$s->payments,'a closed generation is never credited');
 };
-$tests['composer_requires_php_sdk_1_11_0']=static function():void {
+$tests['composer_requires_php_sdk_1_12_0']=static function():void {
  $composer=json_decode((string)file_get_contents(dirname(__DIR__).'/composer.json'),TRUE,512,JSON_THROW_ON_ERROR);
- expect(($composer['require']['paymos/php-sdk']??'')==='^1.11.0','composer.json must require paymos/php-sdk ^1.11.0');
+ expect(($composer['require']['paymos/php-sdk']??'')==='^1.12.0','composer.json must require paymos/php-sdk ^1.12.0');
 };
 $tests['single_item_with_and_without_optionals_sends_products_and_native_total']=static function():void {
  $s=new MemoryStore();

@@ -11,11 +11,11 @@ Drupal Commerce mağazanızda Paymos üzerinden ödeme kabul edin. `1.0.0` sür�
 
 Drupal `^10.3 || ^11` ve Drupal Commerce `^3` kullanın. Modül PHP `^8.1` gereksinimi beyan eder; kullandığınız Drupal sürümü daha yeni bir PHP sürümü isteyebilir, bu nedenle daha katı gereksinime uyun. Mağazanızın bağlantı ve ödeme bildirimleri için herkese açık bir HTTPS adresine sahip olması gerekir.
 
-Modül GPL-2.0-or-later lisansını kullanır. PHP SDK bağımlılığı (`paymos/php-sdk`) MIT lisanslıdır ve ödeme adımında `Paymos\Plugin\InvoicePresentation::normalizeProducts` üzerinden `products[]` normalleştirmesi için `^1.11.0` (`1.11.0` veya uyumlu daha yeni bir `1.x` sürümü) gerektirir.
+Modül GPL-2.0-or-later lisansını kullanır. PHP SDK bağımlılığı (`paymos/php-sdk`) MIT lisanslıdır ve ödeme adımında `Paymos\Plugin\InvoicePresentation::normalizeProducts` üzerinden `products[]` normalleştirmesi için `^1.12.0` (`1.12.0` veya uyumlu daha yeni bir `1.x` sürümü) gerektirir.
 
 ## Modülü kurma
 
-Kararlı sürümü kurmak ve `paymos/php-sdk:^1.11.0` bağımlılığını çözmek için Composer kullanın:
+Kararlı sürümü kurmak ve `paymos/php-sdk:^1.12.0` bağımlılığını çözmek için Composer kullanın:
 
 ```sh
 composer require 'drupal/commerce_paymos:^1.0'
@@ -43,7 +43,7 @@ Kimlik bilgileri şifrelenmiş Drupal state alanında saklanır. Şifreleme, Dru
 
 12 eklentilik Paymos CMS kataloğunun genelinde (`plugins/cms-store-catalog.json`):
 
-- Tüm **11** ürün ticareti CMS eklentisi `products[]` gönderir: `Paymos\Plugin\InvoicePresentation::normalizeProducts` üzerine kurulu **10** PHP eklentisi (`WooCommerce`, `Easy Digital Downloads`, `paymos/php-sdk:^1.11.0` üzerinde `Drupal Commerce`, `OpenCart`, `PrestaShop`, `WHMCS`, `CS-Cart`, `Magento 2`, `Shopware 6` ve `^1.11.0` üzerinde `HikaShop` `1.1.0`) artı **Odoo** (`20.0.1.1.0`, gömülü Paymos Python SDK `1.x` (`>= 1.6.0`) üzerinden `client.request("POST", "/v1/invoices", payload)` ile `products` gönderir).
+- Tüm **11** ürün ticareti CMS eklentisi `products[]` gönderir: `Paymos\Plugin\InvoicePresentation::normalizeProducts` üzerine kurulu **10** PHP eklentisi (`WooCommerce`, `Easy Digital Downloads`, `paymos/php-sdk:^1.12.0` üzerinde `Drupal Commerce`, `OpenCart`, `PrestaShop`, `WHMCS`, `CS-Cart`, `Magento 2`, `Shopware 6` ve `^1.11.0` üzerinde `HikaShop` `1.1.0`) artı **Odoo** (`20.0.1.1.0`, gömülü Paymos Python SDK `1.x` (`>= 1.6.0`) üzerinden `client.request("POST", "/v1/invoices", payload)` ile `products` gönderir).
 - Yalnızca bağış ağ geçidi **`givewp-paymos`**, bağışlarda ürün sepeti olmadığı için `amount-only` olarak kalır.
 
 ## Ödeme kontrollerini çalışır durumda tutma

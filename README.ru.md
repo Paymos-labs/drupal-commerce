@@ -11,11 +11,11 @@
 
 Нужны Drupal `^10.3 || ^11` и Drupal Commerce `^3`. Модуль требует PHP `^8.1`, но ваша версия Drupal может требовать более свежий PHP — ориентируйтесь на более строгое ограничение. Магазину нужен публичный HTTPS-адрес для подключения и приёма платёжных уведомлений.
 
-Модуль распространяется под лицензией GPL-2.0-or-later. Его зависимость `paymos/php-sdk` выходит под лицензией MIT и требует версию `^1.11.0` (`1.11.0` или более новый совместимый релиз ветки `1.x`), чтобы передавать нормализованный массив `products[]` на чекауте через `Paymos\Plugin\InvoicePresentation::normalizeProducts`.
+Модуль распространяется под лицензией GPL-2.0-or-later. Его зависимость `paymos/php-sdk` выходит под лицензией MIT и требует версию `^1.12.0` (`1.12.0` или более новый совместимый релиз ветки `1.x`), чтобы передавать нормализованный массив `products[]` на чекауте через `Paymos\Plugin\InvoicePresentation::normalizeProducts`.
 
 ## Установка модуля
 
-Установите стабильный релиз через Composer, чтобы автоматически подтянуть `paymos/php-sdk:^1.11.0`:
+Установите стабильный релиз через Composer, чтобы автоматически подтянуть `paymos/php-sdk:^1.12.0`:
 
 ```sh
 composer require 'drupal/commerce_paymos:^1.0'
@@ -43,7 +43,7 @@ composer require 'drupal/commerce_paymos:^1.0'
 
 Во всём каталоге из 12 CMS-плагинов Paymos (`plugins/cms-store-catalog.json`):
 
-- Все **11** товарных CMS-плагинов передают `products[]`: **10** PHP-плагинов на базе `Paymos\Plugin\InvoicePresentation::normalizeProducts` (`WooCommerce`, `Easy Digital Downloads`, `Drupal Commerce` на `paymos/php-sdk:^1.11.0`, `OpenCart`, `PrestaShop`, `WHMCS`, `CS-Cart`, `Magento 2`, `Shopware 6` и `HikaShop` `1.1.0` на `^1.11.0`) плюс **Odoo** (`20.0.1.1.0`, который передаёт `products` через встроенный Paymos Python SDK `1.x` (`>= 1.6.0`) вызовом `client.request("POST", "/v1/invoices", payload)`).
+- Все **11** товарных CMS-плагинов передают `products[]`: **10** PHP-плагинов на базе `Paymos\Plugin\InvoicePresentation::normalizeProducts` (`WooCommerce`, `Easy Digital Downloads`, `Drupal Commerce` на `paymos/php-sdk:^1.12.0`, `OpenCart`, `PrestaShop`, `WHMCS`, `CS-Cart`, `Magento 2`, `Shopware 6` и `HikaShop` `1.1.0` на `^1.11.0`) плюс **Odoo** (`20.0.1.1.0`, который передаёт `products` через встроенный Paymos Python SDK `1.x` (`>= 1.6.0`) вызовом `client.request("POST", "/v1/invoices", payload)`).
 - Только шлюз пожертвований **`givewp-paymos`** работает в режиме `amount-only`, потому что у пожертвований нет корзины товаров.
 
 ## Регулярные проверки платежей

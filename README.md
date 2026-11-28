@@ -11,11 +11,11 @@ Accept payments through Paymos in Drupal Commerce. Version `1.0.0` is the first 
 
 Use Drupal `^10.3 || ^11` with Drupal Commerce `^3`. The module declares PHP `^8.1`; your Drupal version may require a newer PHP version, so follow the stricter requirement. Your store needs a public HTTPS address for the connection and payment notifications.
 
-The module uses the GPL-2.0-or-later license. Its PHP SDK dependency (`paymos/php-sdk`) uses the MIT license and requires version `^1.11.0` (`1.11.0` or newer compatible `1.x` release) for checkout `products[]` normalization via `Paymos\Plugin\InvoicePresentation::normalizeProducts`.
+The module uses the GPL-2.0-or-later license. Its PHP SDK dependency (`paymos/php-sdk`) uses the MIT license and requires version `^1.12.0` (`1.12.0` or newer compatible `1.x` release) for checkout `products[]` normalization via `Paymos\Plugin\InvoicePresentation::normalizeProducts`.
 
 ## Install the module
 
-Use Composer to install the stable release and resolve `paymos/php-sdk:^1.11.0`:
+Use Composer to install the stable release and resolve `paymos/php-sdk:^1.12.0`:
 
 ```sh
 composer require 'drupal/commerce_paymos:^1.0'
@@ -43,7 +43,7 @@ When `Paymos\Plugin\InvoicePresentation::normalizeProducts` is available, `Check
 
 Across the 12-plugin Paymos CMS catalog (`plugins/cms-store-catalog.json`):
 
-- All **11** commodity CMS plugins transmit `products[]`: the **10** PHP plugins built on `Paymos\Plugin\InvoicePresentation::normalizeProducts` (`WooCommerce`, `Easy Digital Downloads`, `Drupal Commerce` on `paymos/php-sdk:^1.11.0`, `OpenCart`, `PrestaShop`, `WHMCS`, `CS-Cart`, `Magento 2`, `Shopware 6`, and `HikaShop` `1.1.0` on `^1.11.0`) plus **Odoo** (`20.0.1.1.0`, sending `products` over the bundled Paymos Python SDK `1.x` (`>= 1.6.0`) via `client.request("POST", "/v1/invoices", payload)`).
+- All **11** commodity CMS plugins transmit `products[]`: the **10** PHP plugins built on `Paymos\Plugin\InvoicePresentation::normalizeProducts` (`WooCommerce`, `Easy Digital Downloads`, `Drupal Commerce` on `paymos/php-sdk:^1.12.0`, `OpenCart`, `PrestaShop`, `WHMCS`, `CS-Cart`, `Magento 2`, `Shopware 6`, and `HikaShop` `1.1.0` on `^1.11.0`) plus **Odoo** (`20.0.1.1.0`, sending `products` over the bundled Paymos Python SDK `1.x` (`>= 1.6.0`) via `client.request("POST", "/v1/invoices", payload)`).
 - Only the donation gateway **`givewp-paymos`** remains `amount-only`, because donations have no product cart.
 
 ## Keep payment checks running

@@ -3,10 +3,10 @@
 declare(strict_types=1);
 namespace Drupal\commerce_paymos\Service;
 
-use Paymos\Plugin\{AmountGuard, EffectClaim, NativeProjectionResult, RefundIntent, RefundIntentPage, RefundIntentStoreInterface, RefundStates, VerifiedRefund};
+use Paymos\Plugin\{AmountGuard, EffectClaim, NativeProjectionResult, RefundIntent, RefundIntentPage, RefundIntentStoreInterface, RefundCandidateStoreInterface, RefundStates, VerifiedRefund};
 
 /** Owner-fenced leases span HTTP; native row locks span only SQL transactions. */
-final class RefundIntentStore implements RefundIntentStoreInterface {
+final class RefundIntentStore implements RefundIntentStoreInterface, RefundCandidateStoreInterface {
   private $db;
   private $time;
   private $owners = [];
@@ -155,6 +155,11 @@ final class RefundIntentStore implements RefundIntentStoreInterface {
   public function recordProjection(string $operationId, NativeProjectionResult $result): void {
     $data = $this->getIntent($operationId)->toArray();
     $data['projection'] = $result->toArray(); $this->save($data);
+  }
+  public function recordReadCandidate(string $operationId, ?string $candidate, int $retryCount): void {
+    $data = $this->getIntent($operationId)->toArray();
+    $data['candidate_withdrawal_id'] = $candidate; $data['read_retry_count'] = $retryCount;
+    $this->save($data);
   }
   public function recordState(string $operationId, string $cashState, string $projectionState, ?string $reason): void {
     $data = $this->getIntent($operationId)->toArray();
